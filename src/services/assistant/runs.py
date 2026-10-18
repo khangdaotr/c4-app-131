@@ -5,22 +5,25 @@ storage remain the existing ORM models; no graph/checkpoint state is stored.
 """
 
 import asyncio
+import logging
 from collections.abc import AsyncIterator, Awaitable, Callable
-from threading import get_ident
+from threading import RLock, get_ident
 from typing import Any
 
 from fastapi import Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select, update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from src.api.errors import AppError
+from src.config import get_settings
 from src.db.database import SessionLocal
 from src.db.models import AssistantConversation, AssistantRun, AssistantTurn, User, utcnow
 from src.models.assistant import AssistantRunResponse, ChatRequest, ChatResponse
 
 _tasks: dict[str, asyncio.Task[ChatResponse]] = {}
+logger = logging.getLogger(__name__)
 
 
 def owned_run(db: Session, run_id: str, user: User) -> AssistantRun:
@@ -96,7 +99,7 @@ def reserve(
     return run, True
 
 
-def finish_interrupted(run_id: str, body: ChatRequest, status: str) -> None:
+def finish_interrupted(run_id: str, body: ChatRequest, status: str, partial_message: str | None = None) -> None:
     with SessionLocal() as db:
         changed = db.execute(
             update(AssistantRun)
@@ -115,7 +118,7 @@ def finish_interrupted(run_id: str, body: ChatRequest, status: str) -> None:
                         conversation_id=run.conversation_id,
                         run_id=run_id,
                         user_message=body.message,
-                        assistant_message="",
+                        assistant_message=partial_message or "",
                         intent="qa",
                         context_json=body.context.model_dump(mode="json"),
                         interrupted=True,
@@ -123,6 +126,8 @@ def finish_interrupted(run_id: str, body: ChatRequest, status: str) -> None:
                 )
             else:
                 turn.interrupted = True
+                if partial_message is not None:
+                    turn.assistant_message = partial_message
             db.commit()
 
 
@@ -201,23 +206,35 @@ def stream(
         encoder = streaming.EventEncoder(run_id, conversation_id)
         guard = streaming.OutputGuard("you" if answer_language(body.message) == "en" else "bạn")
         partial = ""
+        saved_partial = ""
+        partial_lock = RLock()
+
+        def snapshot() -> str:
+            with partial_lock:
+                return partial
+
+        def checkpoint() -> None:
+            nonlocal saved_partial
+            text = snapshot()
+            if text == saved_partial:
+                return
+            with SessionLocal() as db:
+                db.execute(update(AssistantTurn).where(AssistantTurn.run_id == run_id).values(assistant_message=text))
+                db.commit()
+            saved_partial = text
 
         def sink(name: str, data: dict[str, Any]) -> None:
             nonlocal partial
             if name not in streaming.EVENTS:
                 raise ValueError("Unsupported assistant event")
             if name == "token":
-                text = guard.feed(data["text"])
-                if not text:
-                    return
-                if len(partial) + len(text) > 16000:
-                    raise ValueError("Assistant output exceeds the response limit")
-                partial += text
-                with SessionLocal() as db:
-                    db.execute(
-                        update(AssistantTurn).where(AssistantTurn.run_id == run_id).values(assistant_message=partial)
-                    )
-                    db.commit()
+                with partial_lock:
+                    text = guard.feed(data["text"])
+                    if not text:
+                        return
+                    if len(partial) + len(text) > 16000:
+                        raise ValueError("Assistant output exceeds the response limit")
+                    partial += text
                 data = {"text": text}
             elif name == "route":
                 with SessionLocal() as db:
@@ -229,6 +246,7 @@ def stream(
                 loop.call_soon_threadsafe(queue.put_nowait, (name, data))
 
         async def worker() -> ChatResponse:
+            nonlocal partial
             try:
                 with SessionLocal() as db:
                     run = db.get(AssistantRun, run_id)
@@ -236,22 +254,19 @@ def stream(
                         raise asyncio.CancelledError
                 sink("status", {"status": "thinking"})
                 response = await respond(sink)
-                if not partial:
+                if not snapshot():
                     sink("token", {"text": response.message})
-                tail = guard.finish()
-                if tail:
-                    partial_text = partial + tail
-                    sink("token", {"text": tail})
-                else:
+                with partial_lock:
+                    tail = guard.finish()
+                    if len(partial) + len(tail) > 16000:
+                        raise ValueError("Assistant output exceeds the response limit")
+                    partial += tail
                     partial_text = partial
+                if tail:
+                    # finish() already sanitized the tail; do not feed it into the guard again.
+                    queue.put_nowait(("token", {"text": tail}))
                 response = response.model_copy(update={"message": partial_text})
-                with SessionLocal() as db:
-                    db.execute(
-                        update(AssistantTurn)
-                        .where(AssistantTurn.run_id == run_id)
-                        .values(assistant_message=partial_text)
-                    )
-                    db.commit()
+                checkpoint()
                 if response.sources:
                     sink("citations", {"sources": [source.model_dump(mode="json") for source in response.sources]})
                 for card in response.cards:
@@ -263,11 +278,12 @@ def stream(
                 sink("final", response.model_dump(mode="json"))
                 return response
             except asyncio.CancelledError:
-                finish_interrupted(run_id, body, "cancelled")
-                queue.put_nowait(("final", {"status": "cancelled", "interrupted": True, "message": partial}))
+                text = snapshot()
+                finish_interrupted(run_id, body, "cancelled", text)
+                queue.put_nowait(("final", {"status": "cancelled", "interrupted": True, "message": text}))
                 raise
             except Exception:
-                finish_interrupted(run_id, body, "failed")
+                finish_interrupted(run_id, body, "failed", snapshot())
                 queue.put_nowait(
                     ("error", {"code": "assistant_unavailable", "message": "Assistant temporarily unavailable."})
                 )
@@ -276,6 +292,8 @@ def stream(
         task = asyncio.create_task(worker())
         _tasks[run_id] = task
         next_heartbeat = asyncio.get_running_loop().time() + streaming.HEARTBEAT_SECONDS
+        checkpoint_seconds = get_settings().assistant_stream_checkpoint_seconds
+        next_checkpoint = loop.time() + checkpoint_seconds
         try:
             while not task.done() or not queue.empty():
                 if await request.is_disconnected():
@@ -286,6 +304,14 @@ def stream(
                 except TimeoutError:
                     pass
                 now = asyncio.get_running_loop().time()
+                if not task.done() and now >= next_checkpoint:
+                    try:
+                        checkpoint()
+                    except SQLAlchemyError:
+                        # A transient checkpoint failure must not tear down SSE.
+                        # Final/cancel/error persistence is still mandatory.
+                        logger.warning("Assistant stream checkpoint unavailable")
+                    next_checkpoint = now + checkpoint_seconds
                 if not task.done() and now >= next_heartbeat:
                     yield encoder.encode("heartbeat", {})
                     next_heartbeat = now + streaming.HEARTBEAT_SECONDS
@@ -295,7 +321,7 @@ def stream(
             try:
                 await task
             except asyncio.CancelledError:
-                finish_interrupted(run_id, body, "cancelled")
+                finish_interrupted(run_id, body, "cancelled", snapshot())
             except Exception:
                 pass  # The stream contains a sanitized error, never a traceback.
             _tasks.pop(run_id, None)

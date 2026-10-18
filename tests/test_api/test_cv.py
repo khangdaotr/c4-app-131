@@ -261,8 +261,10 @@ async def test_in_app_preview_pages_for_pdf_and_template_for_docx(client):
     page = await client.get(f"/api/v1/cv/{cv['id']}/pages/1", headers=STUDENT)
     assert page.status_code == 200 and page.headers["content-type"] == "image/png"
     assert page.content.startswith(b"\x89PNG")
+    assert page.headers["cache-control"] == "private, max-age=3600"
     missing = await client.get(f"/api/v1/cv/{cv['id']}/pages/2", headers=STUDENT)
     assert missing.status_code == 404 and missing.json()["code"] == "cv_page_not_found"
+    assert missing.headers["cache-control"] == "no-store"
 
     docx = (await upload(client, "cv.docx", make_docx(["Nguyễn Minh Anh", "KỸ NĂNG", CV_TEXT]))).json()
     preview = (await client.get(f"/api/v1/cv/{docx['id']}/preview", headers=STUDENT)).json()

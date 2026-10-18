@@ -7,7 +7,7 @@ from pathlib import Path
 
 from src.config import get_settings
 from src.services.assistant.chunker import DocChunk, MarkdownDocChunker
-from src.services.assistant.hybrid_search import save_bm25_corpus
+from src.services.assistant.hybrid_search import ASSISTANT_INDEX_LOCK, invalidate_retriever, save_bm25_corpus
 from src.services.assistant.vector_store import AssistantVectorStore
 
 
@@ -33,9 +33,11 @@ def build_assistant_index(docs_dir: str | None = None) -> int:
     version = hashlib.sha256("\n".join(chunk.model_dump_json() for chunk in chunks).encode("utf-8")).hexdigest()
     chunks = [chunk.model_copy(update={"docs_version": version}) for chunk in chunks]
     # Validate every document before modifying the existing collection.
-    store = AssistantVectorStore()
-    store.replace_chunks(chunks)
-    save_bm25_corpus(store, chunks)
+    with ASSISTANT_INDEX_LOCK:
+        invalidate_retriever()
+        store = AssistantVectorStore()
+        store.replace_chunks(chunks)
+        save_bm25_corpus(store, chunks)
     print(f"Embedding backend: {store.embedding_service.embedding_id}")
     print(f"Successfully indexed {len(chunks)} chunks from {len(files)} files")
     return len(chunks)

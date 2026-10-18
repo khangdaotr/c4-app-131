@@ -5,10 +5,13 @@ import json
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import event
+from sqlalchemy.exc import OperationalError
 
+from src.config import get_settings
 from src.db.database import SessionLocal
 from src.db.models import AssistantConversation, AssistantRun, AssistantTurn, User
-from src.models.assistant import ChatRequest
+from src.models.assistant import ChatRequest, ChatResponse
 from src.services.assistant import runs, streaming
 from tests import test_assistant_runs as run_tests
 from tests.test_assistant_runs import payload
@@ -85,6 +88,157 @@ def reserved(user_id: str):
 
 def frame(wire):
     return wire.split("event: ")[1].splitlines()[0], json.loads(wire.split("data: ")[1])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("threaded", [False, True])
+async def test_token_burst_commits_once_and_preserves_full_text(assistant_accounts, monkeypatch, threaded) -> None:
+    _, _, users = assistant_accounts
+    body, run_id, conversation_id = reserved(users["a"])
+    monkeypatch.setattr(get_settings(), "assistant_stream_checkpoint_seconds", 60)
+    with SessionLocal() as db:
+        turn_id = db.query(AssistantTurn).filter_by(run_id=run_id).one().id
+    commits = []
+
+    def committed(session):
+        commits.append(1)
+
+    async def respond(sink):
+        def produce():
+            for _ in range(1000):
+                sink("token", {"text": "word "})
+            assert not commits, "Streaming tokens must not perform synchronous database writes"
+
+        if threaded:
+            await asyncio.to_thread(produce)
+        else:
+            produce()
+        return ChatResponse(
+            conversation_id=conversation_id, turn_id=turn_id, run_id=run_id, message="word " * 1000, intent="qa"
+        )
+
+    event.listen(SessionLocal.class_, "after_commit", committed)
+    try:
+        wires = [wire async for wire in runs.stream(run_id, conversation_id, body, Connection(), respond).body_iterator]
+    finally:
+        event.remove(SessionLocal.class_, "after_commit", committed)
+    events = [frame(wire) for wire in wires]
+    text = "".join(data["text"] for name, data in events if name == "token")
+    assert text == "word " * 1000
+    assert events[-1][0] == "final" and events[-1][1]["message"] == text
+    assert len(commits) == 1
+    with SessionLocal() as db:
+        assert db.get(AssistantTurn, turn_id).assistant_message == text
+
+
+@pytest.mark.asyncio
+async def test_idle_stream_checkpoints_before_completion(assistant_accounts, monkeypatch) -> None:
+    _, _, users = assistant_accounts
+    body, run_id, conversation_id = reserved(users["a"])
+    monkeypatch.setattr(get_settings(), "assistant_stream_checkpoint_seconds", 0.01)
+    monkeypatch.setattr(streaming, "HEARTBEAT_SECONDS", 0.01)
+
+    async def respond(sink):
+        sink("token", {"text": "Checkpointed [[PERSON_x]] text"})
+        await asyncio.Event().wait()
+
+    iterator = runs.stream(run_id, conversation_id, body, Connection(), respond).body_iterator
+    try:
+        async with asyncio.timeout(5):
+            while frame(await anext(iterator))[0] != "heartbeat":
+                pass
+        with SessionLocal() as db:
+            run = db.get(AssistantRun, run_id)
+            turn = db.query(AssistantTurn).filter_by(run_id=run_id).one()
+            assert run.status == "running"
+            assert turn.assistant_message == "Checkpointed you text"
+    finally:
+        await iterator.aclose()
+    assert run_id not in runs._tasks
+
+
+@pytest.mark.asyncio
+async def test_transient_checkpoint_failure_keeps_stream_alive_and_retries(assistant_accounts, monkeypatch) -> None:
+    from src.db.database import engine
+
+    _, _, users = assistant_accounts
+    body, run_id, conversation_id = reserved(users["a"])
+    monkeypatch.setattr(get_settings(), "assistant_stream_checkpoint_seconds", 0.01)
+    monkeypatch.setattr(streaming, "HEARTBEAT_SECONDS", 0.01)
+    failed = False
+    closed = asyncio.Event()
+
+    def fail_first_write(conn, cursor, statement, parameters, context, executemany):
+        nonlocal failed
+        if not failed and statement.upper().startswith("UPDATE ASSISTANT_TURNS"):
+            failed = True
+            raise OperationalError("update", {}, RuntimeError("private database error"))
+
+    async def respond(sink):
+        try:
+            sink("token", {"text": "Keep streaming"})
+            await asyncio.Event().wait()
+        finally:
+            closed.set()
+
+    iterator = runs.stream(run_id, conversation_id, body, Connection(), respond).body_iterator
+    event.listen(engine, "before_cursor_execute", fail_first_write)
+    try:
+        async with asyncio.timeout(5):
+            while frame(await anext(iterator))[0] != "heartbeat":
+                pass
+            assert failed and not closed.is_set()
+            while frame(await anext(iterator))[0] != "heartbeat":
+                pass
+        with SessionLocal() as db:
+            assert db.query(AssistantTurn).filter_by(run_id=run_id).one().assistant_message == "Keep streaming"
+    finally:
+        event.remove(engine, "before_cursor_execute", fail_first_write)
+        await iterator.aclose()
+    assert closed.is_set() and run_id not in runs._tasks
+
+
+@pytest.mark.asyncio
+async def test_failure_flushes_uncheckpointed_sanitized_text(assistant_accounts, monkeypatch) -> None:
+    _, _, users = assistant_accounts
+    body, run_id, conversation_id = reserved(users["a"])
+    monkeypatch.setattr(get_settings(), "assistant_stream_checkpoint_seconds", 60)
+
+    async def respond(sink):
+        sink("token", {"text": "Saved [[PERSON_x]] partial"})
+        raise RuntimeError("private provider error")
+
+    wires = [wire async for wire in runs.stream(run_id, conversation_id, body, Connection(), respond).body_iterator]
+    assert frame(wires[-1])[0] == "error"
+    assert "private provider error" not in "".join(wires)
+    with SessionLocal() as db:
+        assert db.get(AssistantRun, run_id).status == "failed"
+        turn = db.query(AssistantTurn).filter_by(run_id=run_id).one()
+        assert turn.interrupted and turn.assistant_message == "Saved you partial"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("prefix_size, terminal_event", [(10, "final"), (15999, "error")])
+async def test_guard_tail_is_saved_and_respects_response_limit(assistant_accounts, prefix_size, terminal_event) -> None:
+    _, _, users = assistant_accounts
+    body, run_id, conversation_id = reserved(users["a"])
+    with SessionLocal() as db:
+        turn_id = db.query(AssistantTurn).filter_by(run_id=run_id).one().id
+
+    async def respond(sink):
+        sink("token", {"text": "x" * prefix_size + "[[PERSON_unfinished"})
+        return ChatResponse(
+            conversation_id=conversation_id, turn_id=turn_id, run_id=run_id, message="unused", intent="qa"
+        )
+
+    wires = [wire async for wire in runs.stream(run_id, conversation_id, body, Connection(), respond).body_iterator]
+    events = [frame(wire) for wire in wires]
+    assert events[-1][0] == terminal_event
+    with SessionLocal() as db:
+        saved = db.get(AssistantTurn, turn_id).assistant_message
+        assert len(saved) <= 16000 and "[[" not in saved
+        if terminal_event == "final":
+            assert saved == events[-1][1]["message"] == "x" * prefix_size + "you"
 
 
 @pytest.mark.asyncio
