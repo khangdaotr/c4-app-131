@@ -10,6 +10,9 @@ docs/
 presentation/
 eval/
 *.md
+# Tài liệu hướng dẫn là nguồn RAG của trợ lý (build_assistant_index)
+!docs/user-guide/
+!docs/user-guide/**
 !requirements.txt
 .dockerignore
 Dockerfile

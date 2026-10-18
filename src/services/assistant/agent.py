@@ -623,7 +623,7 @@ class AssistantAgent:
         # Gate only the top result here; leave citation ranking/cutoffs intact.
         if (
             isinstance(embedding_id, str)
-            and embedding_id.startswith("e5:")
+            and embedding_id.startswith(("e5:", "openrouter:"))
             and selected
             and selected[0].get("abstain_score", selected[0]["score"]) < get_settings().rag_semantic_abstain_threshold
         ):
@@ -798,8 +798,14 @@ class AssistantAgent:
                     {
                         "question": state["message"],
                         "history": json.dumps(state["history"][-4:], ensure_ascii=False),
-                        "documents": [clean_citation_snippet(chunk["content"]) for chunk in state["retrieved_chunks"]],
                     }
+                )
+                # Guide chunks are server-authored, not user prose: NER turned UI words such as
+                # "Trang", "Nút", "PDF", "STAR" into [[PERSON]], which surfaced as "bạn" and then
+                # failed safe_guide_output. Keep regex/identity masking; skip name detection.
+                data["documents"] = scope.mask_payload(
+                    [clean_citation_snippet(chunk["content"]) for chunk in state["retrieved_chunks"]],
+                    detect_names=False,
                 )
                 prompt = (
                     f"<untrusted_user_query>{escape(data['question'], quote=False)}</untrusted_user_query>\n"
@@ -827,6 +833,7 @@ class AssistantAgent:
                     model=get_settings().llm_model_agent,
                     temperature=0,
                     stream_text=_event_sink.get() is not None,
+                    output_detect_names=False,
                 )
                 async for event in stream:
                     if isinstance(event, ContentDelta):
@@ -839,7 +846,7 @@ class AssistantAgent:
                 if not done:
                     raise GatewayError("Incomplete how-to response")
                 text = scope.sanitize_output(text)
-                if not safe_guide_output(text):
+                if not safe_guide_output(text, [chunk["content"] for chunk in state["retrieved_chunks"]]):
                     if _event_sink.get() is not None and text:
                         emit_event(
                             "notice",

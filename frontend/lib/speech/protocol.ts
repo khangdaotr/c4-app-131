@@ -1,6 +1,6 @@
 export const PHOWHISPER_SOURCE = "vinai/PhoWhisper-base"
 export const PHOWHISPER_REVISION = "7ebdb9e88f5cc5271fb88f4d642c82ff9388650e"
-export const PHOWHISPER_ASSET_VERSION = `${PHOWHISPER_REVISION}-v1`
+export const PHOWHISPER_ASSET_VERSION = `${PHOWHISPER_REVISION}-v2`
 export const PHOWHISPER_MODEL = `phowhisper-base/${PHOWHISPER_ASSET_VERSION}`
 export const SAMPLE_RATE = 16000
 

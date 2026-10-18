@@ -212,6 +212,11 @@ class Settings(BaseSettings):
     assistant_chroma_persist_dir: str = "./data/chroma_assistant"
     assistant_embedding_model: str = "intfloat/multilingual-e5-small"
     assistant_embedding_device: str = "cpu"
+    # "openrouter": embed via OpenRouter's API (no torch model in server RAM); key = OPENROUTER_API_KEY
+    assistant_embedding_provider: Literal["local", "openrouter"] = "local"
+    assistant_embedding_api_model: str = "baai/bge-m3"
+    assistant_embedding_api_base_url: str = "https://openrouter.ai/api/v1"
+    assistant_embedding_api_batch_size: int = Field(default=32, ge=1, le=256)
     assistant_docs_dir: str = "./docs/user-guide"
     assistant_locate_threshold: float = Field(default=0.78, ge=0.0, le=1.0)
     assistant_locate_margin: float = Field(default=0.10, ge=0.0, le=1.0)

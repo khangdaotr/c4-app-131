@@ -17,7 +17,8 @@ from urllib.request import urlopen
 
 SOURCE_MODEL = "vinai/PhoWhisper-base"
 SOURCE_REVISION = "7ebdb9e88f5cc5271fb88f4d642c82ff9388650e"
-ASSET_VERSION = f"{SOURCE_REVISION}-v1"
+# v2: v1 could ship optimum's English-only generation_config; bumping changes URLs and browser cache names.
+ASSET_VERSION = f"{SOURCE_REVISION}-v2"
 ROOT = Path(__file__).resolve().parents[1]
 LICENSE_URL = "https://raw.githubusercontent.com/VinAIResearch/PhoWhisper/main/LICENSE"
 
@@ -82,6 +83,10 @@ def main(*, rebuild: bool = False) -> None:
     for path in Path(snapshot).iterdir():
         if path.suffix in {".json", ".txt"}:
             shutil.copy2(path, target / path.name)
+    # Transformers.js rejects language="vi" unless the config declares a multilingual model.
+    generation = json.loads((target / "generation_config.json").read_text(encoding="utf-8"))
+    if not generation.get("is_multilingual") or "<|vi|>" not in generation.get("lang_to_id", {}):
+        raise RuntimeError("generation_config.json is not VinAI's multilingual config; re-run the export")
 
     for name in ("encoder_model", "decoder_model_merged"):
         original = export / f"{name}.onnx"

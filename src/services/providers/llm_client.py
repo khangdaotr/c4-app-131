@@ -217,12 +217,17 @@ class LlmClient:
         max_tokens: int | None = None,
         temperature: float | None = None,
         stream_text: bool = False,
+        output_detect_names: bool = True,
     ) -> AsyncIterator[ContentDelta | ReasoningDelta | ToolCallDelta | Done]:
+        """output_detect_names=False skips NER on model text for prompts built only from
+        server-authored guides plus an already-masked question; regex, identity and
+        dictionary masking still apply."""
         if stream_text and tools:
             raise GatewayError("Text streaming cannot use tools", stage="validation")
         iterator = self._run(
             messages,
             stream_text=stream_text,
+            output_detect_names=output_detect_names,
             tools=tools,
             thinking=thinking,
             model=model,
@@ -241,6 +246,7 @@ class LlmClient:
     ) -> AsyncIterator[ContentDelta | ReasoningDelta | ToolCallDelta | Done]:
         with provider_scope() as scope:
             stream_text = options.pop("stream_text", False)
+            names = options.pop("output_detect_names", True)
             payload = self._payload(messages, **options)
             if not self.recorded and not self.settings.llm_api_key.get_secret_value():
                 raise GatewayError("LLM_API_KEY is required")
@@ -302,7 +308,9 @@ class LlmClient:
                                                 if boundary:
                                                     end = boundary[-1].end()
                                                     unit, private_pending = private_pending[:end], private_pending[end:]
-                                                    safe = scope.sanitize_output(scope.mask_payload(unit, wire=True))
+                                                    safe = scope.sanitize_output(
+                                                        scope.mask_payload(unit, wire=True, detect_names=names)
+                                                    )
                                                     egress_scan(safe, scope)
                                                     public_text += safe
                                                     for token in re.findall(r"\S+\s*|\s+", safe):
@@ -320,7 +328,9 @@ class LlmClient:
                             if scope.mask_only and stream_text:
                                 if calls:
                                     raise GatewayError("Unexpected tool call in text stream")
-                                safe = scope.sanitize_output(scope.mask_payload(private_pending, wire=True))
+                                safe = scope.sanitize_output(
+                                    scope.mask_payload(private_pending, wire=True, detect_names=names)
+                                )
                                 egress_scan(safe, scope)
                                 public_text += safe
                                 for token in re.findall(r"\S+\s*|\s+", safe):
@@ -335,7 +345,7 @@ class LlmClient:
                             # Default callers retain complete-response validation.
                             # Opt-in text streams already masked each complete
                             # sentence and still validate the assembled response.
-                            message = scope.sanitize_output(scope.mask_payload(message, wire=True))
+                            message = scope.sanitize_output(scope.mask_payload(message, wire=True, detect_names=names))
                         egress_scan(message, scope)
                         status = "success"
                     # Finish accounting and close transport BEFORE publishing Done.

@@ -1,6 +1,6 @@
 # Weekly Journal — Team P-131
 
-> Nhật ký học tập được viết ngắn gọn theo từng tuần: đã làm gì, học được gì, vướng gì và dự định tiếp theo. Vì chưa có tên chính thức của đội nên hiện dùng mã đội P-131.
+> Nhật ký quá trình nhóm xây dựng Trợ lý Nghề nghiệp X (CareerX/CareerV), tổng hợp theo lịch sử commit của repository. Nội dung ghi lại các mốc sản phẩm và bài học chung, không phân chia theo thành viên.
 
 ---
 
@@ -8,59 +8,147 @@
 
 ### Đã làm gì?
 
-- Cùng nhóm xác định vấn đề mà dự án muốn giải quyết: sinh viên năm cuối khó sửa CV cho đúng vị trí và thiếu cơ hội luyện phỏng vấn.
-- Viết bản mô tả dự án, yêu cầu sản phẩm và các tình huống người dùng chính.
-- Tham gia thiết kế luồng sử dụng cho sinh viên, cố vấn và quản trị viên.
-- Bổ sung cách chấm câu trả lời phỏng vấn theo bốn phần STAR và nguyên tắc không để AI tự bịa kinh nghiệm trong CV.
+- Xác định bài toán trọng tâm: sinh viên năm cuối và người mới đi làm cần hỗ trợ đánh giá CV theo vị trí ứng tuyển, luyện phỏng vấn và nhận phản hồi từ cố vấn.
+- Soạn brief và PRD ban đầu, xác định persona, user story, phạm vi sản phẩm, nguồn tri thức dự kiến và các tiêu chí chấm CV–JD/phỏng vấn.
+- Bổ sung nguyên tắc bảo vệ tính trung thực của CV, công bằng, giới hạn của AI và cách xử lý khi thiếu bằng chứng.
+- Vẽ sơ đồ luồng dữ liệu và luồng giao diện để mô tả hành trình của sinh viên, cố vấn và quản trị viên; thiết lập cơ chế AI logging cho quá trình phát triển.
 
 ### Học được gì?
 
-- Trước khi làm sản phẩm cần hiểu rõ người dùng đang gặp khó khăn gì, không nên bắt đầu ngay bằng việc viết code.
-- Một gợi ý sửa CV tốt phải dựa trên thông tin có thật. Nếu thiếu số liệu hoặc kinh nghiệm, hệ thống nên hỏi lại thay vì tự điền.
-- STAR là cách sắp xếp câu trả lời phỏng vấn theo bối cảnh, nhiệm vụ, hành động và kết quả.
-- Sơ đồ màn hình giúp một người không có nền tảng IT như tôi dễ hình dung người dùng sẽ đi qua sản phẩm như thế nào.
+- Cần xác định người dùng, vấn đề và tiêu chí thành công trước khi quyết định cách triển khai kỹ thuật.
+- Các gợi ý CV và điểm số chỉ có ý nghĩa khi có căn cứ; hệ thống cần phân biệt dữ liệu người dùng cung cấp với suy luận của AI.
+- Luồng người dùng và sơ đồ dữ liệu giúp nhóm thống nhất cách các màn hình, API và dữ liệu cần phối hợp.
 
 ### Vướng gì?
 
-- Tôi chưa quen đọc tài liệu kỹ thuật và còn dễ nhầm giữa ý tưởng sản phẩm với chức năng đã làm xong.
-- Có nhiều từ mới như API, agent, RAG và rubric nên cần vừa làm vừa tra cứu.
-- Một số yêu cầu ban đầu còn rộng, vì vậy nhóm phải giới hạn phần cơ bản cần làm trước.
+- Phạm vi ban đầu rộng, gồm nhiều vai trò và chức năng nên cần ưu tiên luồng cốt lõi trước.
+- Một số khái niệm như RAG, agent, rubric và guardrail còn mới; tài liệu sản phẩm cần được chuyển thành yêu cầu kỹ thuật cụ thể.
+- Ở giai đoạn này, phần lớn nội dung là đặc tả và thiết kế; chưa thể xem các luồng AI là chức năng đã hoàn thiện.
 
 ### Dự định tuần sau
 
-- Hiểu rõ hơn cấu trúc thư mục và cách backend nhận yêu cầu từ người dùng.
-- Bắt đầu chuẩn bị tài liệu đánh giá và tài liệu giới thiệu dự án.
-- Tiếp tục kiểm tra để các mô tả không nói quá khả năng hiện tại của sản phẩm.
+- Dựng các luồng backend cốt lõi cho hồ sơ CV, phân tích CV–JD và phỏng vấn.
+- Bắt đầu giao diện Next.js để nhóm có thể kiểm tra hành trình sử dụng bằng sản phẩm chạy được.
+- Tiếp tục đối chiếu phạm vi triển khai với PRD và ghi nhận rõ phần nào còn là thiết kế.
 
 ---
 
-## Tuần 2: 21/09/2026–28/09/2026
+## Tuần 2: 21/09/2026–27/09/2026
 
 ### Đã làm gì?
 
-- Viết kế hoạch kiểm tra xem cùng một câu trả lời phỏng vấn có được chấm STAR ổn định qua nhiều lần hay không.
-- Chạy 5 tình huống đánh giá thật trên phiên bản hiện tại, trong đó có 2 tình huống yêu cầu AI bịa số liệu hoặc kỹ năng trong CV.
-- Hoàn thiện README với phần vấn đề, giải pháp, người dùng, công nghệ dự kiến, cách chạy dự án, cấu trúc thư mục và các địa chỉ API hiện có.
-- Viết kịch bản demo tối đa 5 phút, tách rõ phần đang chạy thật và phần mới chỉ là bản thiết kế màn hình.
+- Bắt đầu triển khai các tác vụ đầu tiên của backend và cập nhật cách kết nối mô hình ngôn ngữ theo các commit ghi nhận hoàn thành T1/T2.
+- Bổ sung các tác vụ backend tiếp theo và lớp guardrail để kiểm tra nội dung sinh ra.
+- Khởi tạo frontend phiên bản đầu, tạo nền tảng để ghép các màn hình và API của sản phẩm.
+- Chuẩn bị bước chuyển từ đặc tả sang MVP có thể phát triển và đánh giá theo từng luồng.
 
 ### Học được gì?
 
-- Kết quả đánh giá không nhất thiết phải đẹp. Nếu sản phẩm chưa đạt thì ghi FAIL trung thực sẽ giúp nhóm biết cần sửa gì.
-- “Đầu vào và đầu ra thật” nghĩa là phải lưu đúng nội dung đã gửi vào chương trình và đúng kết quả chương trình trả ra, không tự viết một câu trả lời mẫu rồi gọi đó là kết quả.
-- Tài liệu giới thiệu phải khớp với code. Ví dụ, nếu chưa có giao diện Next.js hoặc kho dữ liệu Qdrant thì chỉ được ghi là dự kiến.
-- Khi demo, ảnh thiết kế cần được ghi rõ là mockup để người xem không hiểu nhầm đó là sản phẩm đã hoạt động.
+- Backend, giao diện và các quy tắc an toàn cần được phát triển cùng một hợp đồng dữ liệu; nếu không, các phần khó kết nối về sau.
+- Guardrail cần được đưa vào luồng xử lý thay vì chỉ ghi trong tài liệu yêu cầu.
+- Một MVP hữu ích cần có đường đi từ thao tác của người dùng tới API và kết quả trả về, thay vì chỉ có các màn hình rời rạc.
 
 ### Vướng gì?
 
-- Phiên bản hiện tại mới là khung cơ bản nên chức năng phân tích CV, chấm STAR và kiểm tra chống bịa chưa hoạt động thật.
-- Tôi vẫn cần thêm thời gian để hiểu mối liên hệ giữa màn hình người dùng, backend và phần xử lý AI.
+- Commit ở giai đoạn đầu chỉ ghi tên tác vụ, chưa mô tả đầy đủ từng kết quả; cần tiếp tục xác minh bằng code và đánh giá chức năng.
+- Kết nối giữa frontend mới khởi tạo và backend vẫn đang trong quá trình hình thành.
+- Các chức năng AI cần dữ liệu và tiêu chí kiểm tra đủ rõ để tránh tạo kết quả có vẻ hợp lý nhưng thiếu căn cứ.
 
 ### Dự định tuần sau
 
-- Nhờ cả nhóm bổ sung tên, vai trò và MSSV thật để hoàn thiện README và phần giới thiệu demo.
-- Chuẩn bị một CV mẫu đã xóa thông tin cá nhân và một JD có nguồn rõ ràng để kiểm thử.
-- Cùng nhóm thống nhất thứ tự làm các chức năng còn thiếu, ưu tiên luồng cơ bản có thể chạy từ đầu đến cuối.
-- Sau khi chức năng mới hoạt động, chạy lại các tình huống đánh giá và so sánh với kết quả ban đầu.
+- Kết nối frontend với API backend và hoàn thiện các màn hình sinh viên quan trọng.
+- Làm rõ luồng lưu phiên bản CV, phân tích theo JD và luyện phỏng vấn.
+- Bổ sung kiểm thử và tài liệu phản ánh đúng trạng thái thực tế của MVP.
+
+---
+
+## Tuần 3: 28/09/2026–04/10/2026
+
+### Đã làm gì?
+
+- Kết nối API backend với frontend trong MVP v1 và xây dựng giao diện sinh viên gồm dashboard, CV của tôi và quản lý phiên bản CV.
+- Hoàn thiện dần các màn hình luyện phỏng vấn, phòng phỏng vấn và báo cáo; bổ sung lịch sử, chia sẻ kết quả với cố vấn và trang cài đặt.
+- Xây dựng luồng phân tích CV–JD, trang kết quả phân tích và trình tối ưu CV; mở rộng giao diện cố vấn với dashboard và danh sách sinh viên.
+- Bổ sung tài liệu quy trình xây dựng kho vector cho JD, bản đồ kiến trúc cấp cao, cây component frontend, bản đồ API, luồng agent, ERD và kiến trúc triển khai; cập nhật README.
+
+### Học được gì?
+
+- Sản phẩm cần được xây theo các hành trình xuyên suốt: tải CV, chọn JD, xem khoảng cách kỹ năng, cải thiện CV và luyện phỏng vấn.
+- Mỗi luồng cần có trạng thái và dữ liệu nhất quán giữa giao diện, API và database.
+- Sơ đồ kiến trúc và tài liệu API giúp việc tích hợp nhanh hơn, đồng thời làm lộ ra những phần chưa được triển khai thật.
+
+### Vướng gì?
+
+- Nhiều màn hình được bổ sung trong thời gian ngắn nên cần rà lại trải nghiệm, tính nhất quán nội dung và trạng thái dữ liệu.
+- Các tuyên bố về chất lượng AI cần được kiểm chứng bằng input/output và bộ tiêu chí có thể lặp lại.
+- Giao diện cố vấn phụ thuộc vào quyền chia sẻ và phân công sinh viên; đây là phần cần kiểm tra kỹ về quyền truy cập.
+
+### Dự định tuần sau
+
+- Đo lường riêng chất lượng gợi ý JD và ghi lại phương pháp cùng dữ liệu đánh giá.
+- Bổ sung chatbot có thể trả lời dựa trên tài liệu hướng dẫn của sản phẩm.
+- Kiểm tra các luồng chính và cập nhật tài liệu đánh giá trung thực với kết quả quan sát được.
+
+---
+
+## Tuần 4: 05/10/2026–11/10/2026
+
+### Đã làm gì?
+
+- Bổ sung luồng so sánh/xếp hạng nhiều JD và xây dựng bộ tình huống, kết quả đánh giá cho chức năng gợi ý việc làm.
+- Cập nhật README, nhật ký và phạm vi báo cáo đánh giá; làm rõ cách phân loại kết quả và giới hạn của bằng chứng.
+- Triển khai chatbot trợ lý với RAG và retrieval, sau đó bổ sung chat widget, bộ nhớ hội thoại và các hành động điều khiển giao diện có highlight.
+- Mở rộng trợ lý backend với hybrid search, agent actions và evaluation suite; cập nhật cấu hình Docker và CORS để hỗ trợ môi trường triển khai.
+- Bổ sung chức năng trích xuất kỹ năng và roadmap học tập từ kết quả phân tích CV–JD.
+
+### Học được gì?
+
+- Retrieval cần được đánh giá bằng dữ liệu và tiêu chí cụ thể; một điểm số tốt chỉ có ý nghĩa khi phương pháp tính và phạm vi thử nghiệm rõ ràng.
+- Chatbot hướng dẫn cần kết hợp câu trả lời có nguồn với ngữ cảnh trang hiện tại; các thao tác thay đổi dữ liệu cần có bước xác nhận phù hợp.
+- Ghi nhận cả trường hợp thất bại giúp phân biệt lỗi chất lượng câu trả lời với lỗi chạy hệ thống và xác định việc cần làm tiếp theo.
+
+### Vướng gì?
+
+- Bằng chứng đánh giá các tính năng khác nhau không thể gộp thành một chỉ số chất lượng chung.
+- Trợ lý có nhiều lớp (tài liệu, retrieval, API, widget, action dispatcher), nên cần kiểm tra tích hợp toàn luồng.
+- Việc triển khai lên môi trường thật kéo theo yêu cầu cấu hình cổng, CORS, biến môi trường và đồng bộ dữ liệu chỉ mục.
+
+### Dự định tuần sau
+
+- Kiểm tra lại các luồng assistant và JD recommendation trên phiên bản tích hợp.
+- Hoàn thiện giao diện và trải nghiệm cho sinh viên, cố vấn và quản trị viên.
+- Bổ sung tài khoản thật, các chức năng hồ sơ và thông báo, đồng thời kiểm tra luồng đăng nhập.
+
+---
+
+## Tuần 5: 12/10/2026–18/10/2026
+
+### Đã làm gì?
+
+- Cập nhật giao diện sinh viên và bổ sung các màn hình cố vấn, landing page, trang xác thực và trường thông tin hồ sơ cá nhân.
+- Mở rộng xử lý CV bằng OCR; bổ sung nhập câu trả lời phỏng vấn bằng giọng nói và bản chép lời trực tiếp, cùng cấu hình voice và các điều chỉnh liên quan.
+- Bổ sung tài khoản thật, thông báo, API cài đặt, đăng nhập demo, tìm kiếm nhanh bằng Ctrl+K và vai trò quản trị viên; mở rộng thư viện JD có cấu trúc, đánh giá/rating, gợi ý và so sánh JD.
+- Làm mới nhận diện sản phẩm, giao diện trợ lý, chế độ tối và sidebar; bổ sung lịch sử so sánh, liên kết roadmap, trình xem CV trong ứng dụng và xuất CV theo mẫu Harvard.
+- Cập nhật luồng tối ưu CV và phỏng vấn: gợi ý câu CV, chọn ngày sinh, câu hỏi ngắn hơn, phản hồi theo ba phần và mẹo cải thiện câu trả lời.
+- Sửa các vấn đề tích hợp và triển khai, gồm OCR/LLM, chấm điểm gợi ý trên thư viện JD, chỉ mục tài liệu assistant, email đặt lại mật khẩu, đăng xuất và cấu hình triển khai frontend.
+
+### Học được gì?
+
+- Sản phẩm phát triển từ một công cụ hỗ trợ CV và phỏng vấn thành một ứng dụng có nhiều vai trò, tài khoản, thư viện JD, trợ lý hướng dẫn và nhiều cách nhập liệu.
+- Các tính năng OCR và giọng nói mở rộng cách người dùng tương tác, nhưng cần kiểm tra độ chính xác của dữ liệu trích xuất trước khi dùng cho phân tích hoặc chấm điểm.
+- Sau mỗi lần mở rộng, chất lượng phụ thuộc nhiều vào tích hợp và dữ liệu xuyên suốt; sửa riêng một màn hình chưa đủ để xác nhận luồng hoàn chỉnh.
+
+### Vướng gì?
+
+- Nhiều tính năng mới được phát triển gần nhau; cần tiếp tục kiểm tra hồi quy và độ ổn định trên các luồng đăng nhập, tải CV, phân tích, phỏng vấn và chia sẻ.
+- Các kết quả AI về kỹ năng thiếu, điểm phù hợp và nội dung CV cần được trình bày có căn cứ, đồng thời để người dùng kiểm soát quyết định cuối cùng.
+- Báo cáo đánh giá trong repository có phạm vi và thời điểm khác nhau; cần gắn mỗi kết luận với đúng phiên bản, dữ liệu và phương pháp.
+
+### Dự định tuần sau
+
+- Kiểm tra xuyên suốt các hành trình sinh viên và cố vấn trên bản triển khai hiện tại.
+- Đối chiếu tài liệu giới thiệu, số liệu đánh giá và chức năng thực tế; cập nhật những nội dung chưa khớp.
+- Ưu tiên sửa lỗi tích hợp, kiểm tra quyền truy cập và xác nhận độ tin cậy của OCR, giọng nói cùng các gợi ý AI.
 
 ---
 
@@ -68,15 +156,15 @@
 
 ### Đã làm gì?
 
-- [Ghi 2–4 việc thực sự đã làm trong tuần.]
+- [Ghi 2–4 việc thực sự đã làm trong tuần, dựa trên thay đổi sản phẩm hoặc bằng chứng cụ thể.]
 
 ### Học được gì?
 
-- [Ghi điều mới hiểu được bằng lời của mình.]
+- [Ghi điều nhóm hiểu thêm trong quá trình xây dựng và kiểm tra sản phẩm.]
 
 ### Vướng gì?
 
-- [Ghi khó khăn thật và phần vẫn chưa giải quyết được.]
+- [Ghi khó khăn thực tế và phần chưa được xác minh hoặc giải quyết.]
 
 ### Dự định tuần sau
 

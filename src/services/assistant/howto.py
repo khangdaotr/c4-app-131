@@ -99,13 +99,21 @@ def attached_actions(metadata: AttachmentMetadata, role: str, current_route: str
         return []
 
 
-def safe_guide_output(message: str) -> bool:
+def safe_guide_output(message: str, documents: list[str] | None = None) -> bool:
     """Conservative backstop for personal assertions/forged links, before caching.
 
     The grounding prompt is primary; this is not a semantic truth verifier.
     Impersonal instructions avoid ambiguous personal claims in either language.
+    Bold labels quoted verbatim from the cited guides (e.g. the page "**CV của tôi**")
+    are UI names, not claims about the user, so they are excluded from the check.
     """
-    text = normalize(message).folded
+    checked = message
+    if documents:
+        guides = "\n".join(documents)
+        checked = re.sub(
+            r"\*\*([^*\n]{1,80})\*\*", lambda m: " " if m.group(1).strip() in guides else m.group(0), message
+        )
+    text = normalize(checked).folded
     return bool(message.strip()) and not re.search(
         r"\b(?:your|yours|my|mine)\b|\bcua\s+(?:rieng\s+)?(?:ban|toi)\b"
         r"|\byou\s+(?:have|uploaded|scored|completed|lack|are missing)\b"
