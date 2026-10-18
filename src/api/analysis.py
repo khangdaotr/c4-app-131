@@ -249,19 +249,7 @@ async def recommend_jds(
             cv_text=cv_text,
             db=db,
             top_n=body.top_n,
-        )
-    results = recommend_top_jds_from_cv(
-        cv_text=cv_text,
-        db=db,
-        top_n=body.top_n,
-        known_scores=_latest_analysis_scores(db, user.id, body.cv_version_id) if body.cv_version_id else None,
-    )
-
-    advice = None
-    if body.generate_advice:
-        advice_data = await generate_career_advice_with_llm(
-            cv_summary=cv_text[:800],
-            recommendations=results,
+            known_scores=_latest_analysis_scores(db, user.id, body.cv_version_id) if body.cv_version_id else None,
         )
 
         advice = None

@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useEffect, useRef, type KeyboardEvent } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, type KeyboardEvent } from "react"
 import { Check, ChevronRight, Info, Loader2, Mic, Square, TimerOff } from "lucide-react"
 
 import { plainText } from "@/components/common/interview-feedback"
@@ -10,7 +10,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { MAX_ANSWER_CHARS, MIN_ANSWER_CHARS } from "@/lib/interview"
 import type { InterviewQuestion, InterviewTurn } from "@/lib/types"
-import { useGroqWhisper } from "@/lib/use-groq-whisper"
+import { usePhoWhisper } from "@/lib/use-phowhisper"
+import { setTypingOnly, usePhoWhisperPreparation } from "@/lib/speech/phowhisper"
+import { SpeechPreparation } from "./speech-preparation"
 import { cn } from "@/lib/utils"
 
 // S6: khung hội thoại phỏng vấn (bản vẽ "Phòng phỏng vấn"). Logic đồng hồ / nộp bài nằm ở InterviewRoom;
@@ -24,10 +26,6 @@ export interface Rejection {
 }
 
 interface InterviewChatProps {
-  /** Buổi phỏng vấn đang diễn ra: gửi kèm khi ghi âm để nhận diện giọng nói theo từ vựng của vị trí. */
-  sessionId?: string
-  /** Server có bật nhận diện giọng nói; không bật thì chỉ có ô gõ. */
-  voiceInput: boolean
   total: number
   turns: InterviewTurn[]
   current: InterviewQuestion | null
@@ -45,7 +43,7 @@ interface InterviewChatProps {
 }
 
 export function InterviewChat(props: InterviewChatProps) {
-  const { sessionId, voiceInput, total, turns, current, rejections, candidateName, candidateAvatar, draft, sending, paused, finished } =
+  const { total, turns, current, rejections, candidateName, candidateAvatar, draft, sending, paused, finished } =
     props
   const { onDraftChange } = props
   const endRef = useRef<HTMLDivElement>(null)
@@ -55,18 +53,22 @@ export function InterviewChat(props: InterviewChatProps) {
   const onTranscriptUpdate = useCallback(
     (speech: string) => {
       const typed = typedBeforeRef.current.trim()
-      onDraftChange(typed && speech ? `${typed} ${speech.trimStart()}` : typed || speech)
+      onDraftChange((typed && speech ? `${typed} ${speech.trimStart()}` : typed || speech).slice(0, MAX_ANSWER_CHARS))
     },
     [onDraftChange],
   )
-  const stt = useGroqWhisper({ sessionId, onTranscript: onTranscriptUpdate })
+  const speech = usePhoWhisperPreparation(!finished)
+  const stt = usePhoWhisper({ onTranscript: onTranscriptUpdate })
+  const voiceInput = !speech.typingOnly && speech.phase === "ready"
   const { stop: stopRecording, cancel: cancelRecording } = stt
   // Tạm dừng: dừng ghi và vẫn chuyển phần đã nói thành chữ; buổi kết thúc: bỏ đoạn đang ghi
   useEffect(() => {
     if (finished) cancelRecording()
+    else if (sending) cancelRecording()
     else if (paused) stopRecording()
-  }, [paused, finished, stopRecording, cancelRecording])
-  const voiceBusy = stt.isRecording || stt.isTranscribing
+  }, [paused, finished, sending, stopRecording, cancelRecording])
+  useLayoutEffect(() => () => cancelRecording(), [current?.index, cancelRecording])
+  const voiceBusy = stt.isStarting || stt.isRecording || stt.isTranscribing
   const clock = `${String(Math.floor(stt.recordSeconds / 60)).padStart(2, "0")}:${String(stt.recordSeconds % 60).padStart(2, "0")}`
 
   const length = draft.trim().length
@@ -149,6 +151,7 @@ export function InterviewChat(props: InterviewChatProps) {
       ) : (
         current && (
           <div className="sticky bottom-4 grid gap-3 rounded-card bg-card p-4 shadow-[var(--shadow-float),0_0_0_1px_var(--line)]">
+            {(!voiceInput && !voiceBusy) && <SpeechPreparation state={speech} />}
             <label htmlFor="interview-answer" className="sr-only">
               Câu trả lời cho câu {current.index}
             </label>
@@ -161,7 +164,7 @@ export function InterviewChat(props: InterviewChatProps) {
               disabled={paused || sending}
               readOnly={voiceBusy}
               placeholder={
-                paused
+                stt.isStarting ? "Đang bật micro…" : paused
                   ? "Đang tạm dừng…"
                   : stt.isRecording
                     ? "Đang nghe…"
@@ -181,15 +184,22 @@ export function InterviewChat(props: InterviewChatProps) {
                 </span>
                 <span>
                   Đang nghe <span className="font-semibold tabular-nums">{clock}</span>. Nói tự nhiên bằng tiếng Việt,
-                  có thể xen thuật ngữ tiếng Anh; chữ hiện sau mỗi lần bạn ngừng nói, bấm Dừng nói khi xong.
+                  có thể xen thuật ngữ tiếng Anh; chữ nháp cập nhật trong lúc nói, bấm Dừng nói khi xong.
                 </span>
               </p>
             )}
+            {stt.provisional && <p className="text-xs text-ink-3" role="status">Chữ nháp đang được cập nhật; bạn có thể sửa sau khi nhận diện xong.</p>}
             {stt.isTranscribing && (
               <p role="status" className="flex items-center gap-2 text-[13px] text-ink-2">
                 <Loader2 className="size-3.5 animate-spin" aria-hidden />
                 Đang chuyển nốt đoạn cuối thành chữ…
               </p>
+            )}
+            {(stt.slow || stt.isTranscribing) && (
+              <div className="flex flex-wrap items-center gap-2 text-sm text-warn">
+                {stt.slow && <span>Thiết bị đang xử lý chậm.</span>}
+                <Button variant="ghost" size="sm" onClick={() => { stt.cancel(); setTypingOnly(true) }}>Giữ chữ hiện có và gõ tiếp</Button>
+              </div>
             )}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
               <span className={cn("text-[13px] tabular-nums", length > 0 && length < MIN_ANSWER_CHARS ? "text-warn" : "text-ink-3")}>
@@ -204,18 +214,18 @@ export function InterviewChat(props: InterviewChatProps) {
                 variant="outline"
                 size="brand"
                 onClick={toggleRecording}
-                disabled={paused || sending || stt.isTranscribing}
+                disabled={paused || sending || stt.isStarting || stt.isTranscribing}
                 aria-pressed={stt.isRecording}
                 className={cn(stt.isRecording && "border-bad text-bad hover:bg-bad-soft hover:text-bad")}
               >
-                {stt.isTranscribing ? (
+                {stt.isStarting || stt.isTranscribing ? (
                   <Loader2 className="animate-spin" aria-hidden />
                 ) : stt.isRecording ? (
                   <Square aria-hidden />
                 ) : (
                   <Mic aria-hidden />
                 )}
-                {stt.isTranscribing ? "Đang chuyển thành chữ…" : stt.isRecording ? "Dừng nói" : "Nói câu trả lời"}
+                {stt.isStarting ? "Đang bật micro…" : stt.isTranscribing ? "Đang chuyển thành chữ…" : stt.isRecording ? "Dừng nói" : "Nói câu trả lời"}
               </Button>
               )}
               <Button size="brand" onClick={props.onSend} disabled={!canSend}>

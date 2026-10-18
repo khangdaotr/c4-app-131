@@ -2,7 +2,9 @@
 
 import json
 import logging
+from functools import lru_cache
 from pathlib import Path
+from threading import RLock
 from typing import Any
 
 from rank_bm25 import BM25Okapi
@@ -14,11 +16,50 @@ from src.services.assistant.guardrails import has_careerv_topic
 from src.services.assistant.vector_store import AssistantVectorStore
 
 logger = logging.getLogger(__name__)
+ASSISTANT_INDEX_LOCK = RLock()
 MIN_RETRIEVAL_SCORE = 0.42
 CITATION_SCORE_RATIO = 0.7
 MAX_CITATIONS = 3
 RRF_K = 60
 MAX_RRF_SCORE = 2.0 / (RRF_K + 1)
+
+
+@lru_cache(maxsize=1)
+def _cached_retriever(
+    config: tuple[str, str, str, str], corpus_stamp: tuple[int, int] | None
+) -> "AssistantHybridRetriever":
+    """Cache identity includes the collection, embedding config and corpus file revision."""
+    return AssistantHybridRetriever()
+
+
+def invalidate_retriever() -> None:
+    """Discard the old collection handle before replacement, including failed rebuilds."""
+    with ASSISTANT_INDEX_LOCK:
+        _cached_retriever.cache_clear()
+
+
+def get_assistant_retriever() -> "AssistantHybridRetriever":
+    """Reuse Chroma and BM25 until a rebuild or configuration change."""
+    settings = get_settings()
+    directory = Path(settings.assistant_chroma_persist_dir).resolve()
+    path = directory / f"{settings.assistant_chroma_collection}_bm25.json"
+    with ASSISTANT_INDEX_LOCK:
+        try:
+            stat = path.stat()
+            stamp = (stat.st_mtime_ns, stat.st_size)
+        except FileNotFoundError:
+            stamp = None
+        return _cached_retriever(
+            (
+                str(directory),
+                settings.assistant_chroma_collection,
+                settings.assistant_embedding_model,
+                settings.assistant_embedding_device,
+            ),
+            stamp,
+        )
+
+
 # Vietnamese function words and generic help phrasing are not topic evidence.
 QUERY_STOP_WORDS = frozenset(
     "và là gì ở đâu tôi có thể cho với trong các những được không nào sao thế này một bạn "

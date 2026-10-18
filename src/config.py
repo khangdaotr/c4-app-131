@@ -224,6 +224,7 @@ class Settings(BaseSettings):
     assistant_similarity_threshold: float = Field(default=0.35, ge=0.0, le=1.0)
     assistant_llm_timeout_seconds: float = Field(default=30.0, gt=0.0, le=120.0)
     assistant_history_turns: int = Field(default=6, ge=0, le=20)
+    assistant_stream_checkpoint_seconds: float = Field(default=0.5, gt=0, le=60)
 
     # Local assistant router. Cache values are decisions, never resolved records.
     router_cache_ttl_s: float = Field(default=300, gt=0)

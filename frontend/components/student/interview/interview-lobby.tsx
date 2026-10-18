@@ -14,6 +14,8 @@ import { formatDate } from "@/lib/format"
 import { MIN_ANSWER_CHARS, PAUSE_MAX_SECONDS, QUESTION_COUNT, SECONDS_PER_QUESTION } from "@/lib/interview"
 import { SetFocusTitle } from "@/components/shell/focus-title"
 import { useApi } from "@/lib/use-api"
+import { preparePhoWhisper, usePhoWhisperPreparation } from "@/lib/speech/phowhisper"
+import { SpeechPreparation } from "./speech-preparation"
 
 const MINUTES = (QUESTION_COUNT * SECONDS_PER_QUESTION) / 60
 
@@ -72,6 +74,7 @@ export function InterviewLobby({
   const fetchQuota = useCallback(() => api.getQuota(jdKey), [jdKey])
   const { data: quota } = useApi(fetchQuota)
   const [starting, setStarting] = useState(false)
+  const speech = usePhoWhisperPreparation(Boolean(jds && cvs && jdId))
 
   const params = new URLSearchParams()
   if (jdId) params.set("jd", jdId)
@@ -141,9 +144,10 @@ export function InterviewLobby({
   const exhausted = quota !== undefined && quota.remaining === 0
 
   async function ready() {
-    if (!jd || cv === undefined) return
+    if (!jd || cv === undefined || starting || exhausted || !quota || (!speech.typingOnly && speech.phase !== "ready")) return
     setStarting(true)
     try {
+      if (!speech.typingOnly) await preparePhoWhisper()
       const session = await api.createInterview({
         jd_id: jd.id,
         cv_version_id: cv?.id ?? null,
@@ -204,6 +208,8 @@ export function InterviewLobby({
         ))}
       </ul>
 
+      <div className="mt-6"><SpeechPreparation state={speech} lobby /></div>
+
       {exhausted ? (
         <p className="mt-6 flex items-start gap-1.5 text-sm text-warn" role="alert">
           <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
@@ -219,7 +225,7 @@ export function InterviewLobby({
       )}
 
       <div className="mt-6 flex flex-wrap items-center gap-2.5 md:mt-8">
-        <Button size="brand" onClick={() => void ready()} disabled={starting || exhausted || !quota}>
+        <Button size="brand" onClick={() => void ready()} disabled={starting || exhausted || !quota || (!speech.typingOnly && speech.phase !== "ready")}>
           {starting && <Loader2 className="animate-spin" aria-hidden />}
           {starting ? "Đang mở phòng…" : "Sẵn sàng"}
           {!starting && <ChevronRight aria-hidden />}

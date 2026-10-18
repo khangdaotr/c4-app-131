@@ -646,7 +646,7 @@ export interface InterviewSession {
   /** Các câu đã trả lời, theo thứ tự. */
   turns: InterviewTurn[]
   created_at: ISODateString
-  /** Server đã bật nhận diện giọng nói (có SONIOX_API_KEY); false thì ẩn nút "Nói câu trả lời". */
+  /** Legacy capability field. PhoWhisper availability is checked on the user's device. */
   voice_input?: boolean
 }
 

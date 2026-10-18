@@ -1,8 +1,13 @@
+from pathlib import Path
+
 import pytest
+from langchain_core.embeddings import DeterministicFakeEmbedding
 from sqlalchemy import delete, select
 
+from src.config import get_settings
 from src.db.database import SessionLocal, init_db
 from src.db.models import CvVersion, Feedback, GapAnalysis, JobDescription
+from src.services import jd_store
 from tests.helpers import ADVISOR, STUDENT, make_docx, upload_cv
 
 CV_LINES = [
@@ -35,6 +40,16 @@ def clean_data():
 
 async def create_cv(client) -> dict:
     return (await upload_cv(client, "CV_MinhAnh.docx", make_docx(CV_LINES))).json()
+
+
+@pytest.fixture
+def recommendation_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> jd_store.JDDocumentStore:
+    """Exercise real Chroma/scoring with an isolated index and no model downloads."""
+    monkeypatch.setattr(get_settings(), "chroma_persist_dir", str(tmp_path / "jd-index"))
+    store = jd_store.JDDocumentStore(embeddings=DeterministicFakeEmbedding(size=384))
+    monkeypatch.setattr(jd_store, "_jd_store_instance", store)
+    store.index_from_fixtures()
+    return store
 
 
 async def analyze(client, **body) -> tuple[dict, dict]:
@@ -188,7 +203,7 @@ async def test_feedback_validation(client, body):
 
 
 @pytest.mark.asyncio
-async def test_recommend_jds_by_cv_version_id(client):
+async def test_recommend_jds_by_cv_version_id(client, recommendation_store):
     """Test API POST /api/v1/jd/recommend gợi ý JD từ cv_version_id đã lưu."""
     cv = await create_cv(client)
     cv_version_id = cv["id"]
@@ -211,7 +226,7 @@ async def test_recommend_jds_by_cv_version_id(client):
 
 
 @pytest.mark.asyncio
-async def test_recommend_jds_by_cv_text(client):
+async def test_recommend_jds_by_cv_text(client, recommendation_store):
     """Test API POST /api/v1/jd/recommend gợi ý trực tiếp từ văn bản cv_text."""
     response = await client.post(
         "/api/v1/jd/recommend",
@@ -225,7 +240,7 @@ async def test_recommend_jds_by_cv_text(client):
 
 
 @pytest.mark.asyncio
-async def test_recommend_jds_errors(client):
+async def test_recommend_jds_errors(client, recommendation_store):
     """Kiểm tra các trường hợp lỗi: thiếu CV hoặc không tìm thấy CV."""
     # Thiếu cả cv_version_id và cv_text
     res_missing = await client.post("/api/v1/jd/recommend", json={}, headers=STUDENT)
@@ -243,7 +258,7 @@ async def test_recommend_jds_errors(client):
 
 
 @pytest.mark.asyncio
-async def test_recommend_scores_every_visible_library_jd(client):
+async def test_recommend_scores_every_visible_library_jd(client, recommendation_store):
     """Thư viện nhỏ: mọi JD đang hiển thị đều được chấm, không bị loại trước bởi bước tìm theo vector."""
     with SessionLocal() as db:
         visible = db.scalars(
@@ -268,7 +283,7 @@ async def test_recommend_scores_every_visible_library_jd(client):
 
 
 @pytest.mark.asyncio
-async def test_recommend_uses_score_of_existing_analysis(client):
+async def test_recommend_uses_score_of_existing_analysis(client, recommendation_store):
     """CV đã phân tích với một JD: gợi ý dùng đúng điểm và nhãn của lượt phân tích đó."""
     cv = await create_cv(client)
     _, analysis = await analyze(client, cv_version_id=cv["id"], jd_id="jd-da-intern")

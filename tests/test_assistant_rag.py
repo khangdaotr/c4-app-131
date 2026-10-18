@@ -137,6 +137,71 @@ def test_rebuild_replaces_removed_chunks(
     assert AssistantVectorStore().collection.count() == count
 
 
+def test_default_retriever_reuses_chroma_and_bm25_until_rebuild(knowledge_base, tmp_path, monkeypatch) -> None:
+    from src.services.assistant.hybrid_search import get_assistant_retriever, invalidate_retriever
+
+    monkeypatch.setattr(get_settings(), "assistant_chroma_persist_dir", str(tmp_path / "index"))
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    guide = docs / "cv.md"
+    text = "---\nroute: /student/cv\nrole: student\ntitle: CV\ntags: [cv]\n---\n# CV\nTải CV PDF."
+    guide.write_text(text, encoding="utf-8")
+    try:
+        build_assistant_index(str(docs))
+        first = get_assistant_retriever()
+        first.search("tải CV PDF", "student")
+        student_index = first._indexes["student"]
+        agent = AssistantAgent()
+        for _ in range(3):
+            result = agent._retrieve({"message": "tải CV PDF", "context": context(), "intent": "qa"})
+            assert result["sources"]
+            assert get_assistant_retriever() is first
+            assert first._indexes["student"] is student_index
+
+        guide.write_text(text.replace("PDF", "DOCX"), encoding="utf-8")
+        build_assistant_index(str(docs))
+        second = get_assistant_retriever()
+        assert second is not first
+        assert any("DOCX" in chunk.content for chunk in second.chunks)
+        assert all("PDF" not in chunk.content for chunk in second.chunks)
+        updated = agent._retrieve({"message": "tải CV DOCX", "context": context(), "intent": "qa"})
+        assert updated["sources"]
+        assert updated["docs_version"] != result["docs_version"]
+    finally:
+        invalidate_retriever()
+
+
+def test_default_retriever_refreshes_on_external_corpus_change(knowledge_base, monkeypatch) -> None:
+    import os
+
+    from src.services.assistant.hybrid_search import get_assistant_retriever, invalidate_retriever
+
+    path = corpus_path(knowledge_base.vector_store)
+    original = path.stat()
+    try:
+        invalidate_retriever()
+        first = get_assistant_retriever()
+        os.utime(path, ns=(original.st_atime_ns, original.st_mtime_ns + 1_000_000_000))
+        assert get_assistant_retriever() is not first
+        monkeypatch.setattr(get_settings(), "assistant_chroma_collection", "another_test_collection")
+        assert get_assistant_retriever().vector_store.collection_name == "another_test_collection"
+    finally:
+        invalidate_retriever()
+
+
+def test_failed_reindex_discards_cached_collection_handle(knowledge_base, monkeypatch) -> None:
+    from src.services.assistant.hybrid_search import get_assistant_retriever, invalidate_retriever
+
+    try:
+        first = get_assistant_retriever()
+        monkeypatch.setattr(AssistantVectorStore, "replace_chunks", MagicMock(side_effect=RuntimeError("failed")))
+        with pytest.raises(RuntimeError, match="failed"):
+            build_assistant_index()
+        assert get_assistant_retriever() is not first
+    finally:
+        invalidate_retriever()
+
+
 def test_chunker_preserves_hierarchy_faq_and_ui_target() -> None:
     document = """---
 route: /student/cv

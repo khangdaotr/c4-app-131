@@ -292,8 +292,6 @@ function Room({ initial }: { initial: InterviewSession }) {
       <div className="grid items-start gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0">
           <InterviewChat
-            sessionId={initial.id}
-            voiceInput={initial.voice_input === true}
             total={total}
             turns={turns}
             current={finished ? null : current}

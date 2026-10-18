@@ -692,7 +692,7 @@ class InterviewSessionResponse(BaseModel):
     pause_seconds_left: int | None = Field(default=None, description="Thời gian tạm dừng còn lại (giây)")
     turns: list[InterviewTurnOut] = Field(default_factory=list, description="Các câu đã trả lời, theo thứ tự")
     created_at: UtcDatetime
-    voice_input: bool = Field(default=False, description="Server có GROQ_API_KEY: cho trả lời bằng giọng nói")
+    voice_input: bool = Field(default=True, description="PhoWhisper trên thiết bị; trình duyệt kiểm tra khả năng hỗ trợ")
 
 
 class CreateInterviewRequest(BaseModel):

@@ -417,7 +417,7 @@ export const api = {
       () => mockApi.getInterviewReport(sessionId),
       () => request(`/interviews/${encodeURIComponent(sessionId)}/report`),
     ),
-  /** Trả lời phỏng vấn bằng giọng nói: đoạn ghi âm → văn bản (Groq Whisper, src/services/groq_stt.py). */
+  /** Legacy server transcription; the interview UI uses on-device PhoWhisper and never calls this. */
   transcribeAudio: (file: Blob, sessionId?: string, previous?: string): Promise<{ text: string }> =>
     via(
       "interview",

@@ -7,7 +7,6 @@ from collections.abc import Callable
 from contextvars import ContextVar
 from functools import lru_cache
 from html import escape
-from threading import RLock
 from typing import Any, Literal, TypedDict
 from urllib.parse import urlsplit
 from uuid import uuid4
@@ -52,7 +51,12 @@ from src.services.assistant.howto import (
     corpus_version,
     safe_guide_output,
 )
-from src.services.assistant.hybrid_search import AssistantHybridRetriever, select_citation_chunks
+from src.services.assistant.hybrid_search import (
+    ASSISTANT_INDEX_LOCK,
+    AssistantHybridRetriever,
+    get_assistant_retriever,
+    select_citation_chunks,
+)
 from src.services.assistant.locate import locate_actions
 from src.services.assistant.router import LocalRouter
 from src.services.assistant.router.models import LocateSlots, NavSlots, RouterDecision
@@ -64,7 +68,6 @@ from src.services.providers.gateway import GatewayError, provider_scope, wrap_ch
 from src.services.providers.llm_client import ContentDelta, Done, LlmClient
 
 logger = logging.getLogger(__name__)
-ASSISTANT_INDEX_LOCK = RLock()
 _event_sink: ContextVar[Callable[[str, dict[str, Any]], None] | None] = ContextVar("assistant_events", default=None)
 
 
@@ -585,9 +588,9 @@ class AssistantAgent:
         context = state["context"]
         emit_event("status", {"status": "searching"})
         try:
-            # A fresh retriever observes rebuilt collections and BM25 corpora.
+            # Reindex shares this lock so search never sees a partially replaced collection.
             with ASSISTANT_INDEX_LOCK:
-                retriever = self._retriever or AssistantHybridRetriever()
+                retriever = self._retriever or get_assistant_retriever()
                 with provider_scope(mask_only=True) as scope:
                     # The masker escapes ampersands for wire/XML safety. Search
                     # keeps their original meaning, without restoring any PII.

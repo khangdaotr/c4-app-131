@@ -41,5 +41,5 @@ class OriginProtectionMiddleware(BaseHTTPMiddleware):
             if response.headers.get("content-type", "").startswith("text/event-stream"):
                 response.headers["Cache-Control"] = "no-cache"
             else:
-                response.headers["Cache-Control"] = "no-store"
+                response.headers.setdefault("Cache-Control", "no-store")
         return response
