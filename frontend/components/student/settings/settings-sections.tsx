@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
+import { ADVISOR_FEATURES } from "@/lib/config"
 import { api, ApiError } from "@/lib/api"
 import { formatBytes, formatDate, formatTime } from "@/lib/format"
 import { isStrongPassword } from "@/lib/password"
@@ -484,14 +485,16 @@ export function PrivacySection({
 
   return (
     <SettingsZone id="privacy" title="Quyền riêng tư">
-      <SettingRow
-        label="Chia sẻ tài liệu với cố vấn"
-        hint={advisorName ? `Cố vấn: ${advisorName}. Mặc định mọi tài liệu là riêng tư.` : "Mặc định mọi tài liệu là riêng tư."}
-      >
-        <Link href="/student/share" className={linkButton}>
-          Chọn mục chia sẻ
-        </Link>
-      </SettingRow>
+      {ADVISOR_FEATURES && (
+        <SettingRow
+          label="Chia sẻ tài liệu với cố vấn"
+          hint={advisorName ? `Cố vấn: ${advisorName}. Mặc định mọi tài liệu là riêng tư.` : "Mặc định mọi tài liệu là riêng tư."}
+        >
+          <Link href="/student/share" className={linkButton}>
+            Chọn mục chia sẻ
+          </Link>
+        </SettingRow>
+      )}
       <SettingRow
         inline
         htmlFor="anonymous-contribution"
@@ -565,7 +568,7 @@ export function NotificationsSection({
 }) {
   const n = settings.notifications
   const rows: { key: keyof StudentSettings["notifications"]; label: string; hint?: string }[] = [
-    { key: "advisor_comment", label: "Cố vấn để lại nhận xét mới" },
+    ...(ADVISOR_FEATURES ? [{ key: "advisor_comment" as const, label: "Cố vấn để lại nhận xét mới" }] : []),
     { key: "report_ready", label: "Báo cáo phân tích hoặc phỏng vấn đã sẵn sàng" },
     { key: "weekly_reminder", label: "Nhắc luyện tập hằng tuần", hint: "Khi 7 ngày chưa luyện và còn lượt trong tuần" },
     { key: "email", label: "Gửi thêm qua email", hint: `Bản sao các thông báo đang bật, gửi tới ${settings.email}` },
@@ -662,7 +665,7 @@ export function DataSection({
         open={confirm}
         onOpenChange={setConfirm}
         title="Xoá toàn bộ dữ liệu?"
-        description="Mọi CV, báo cáo phân tích, báo cáo phỏng vấn và nhận xét của cố vấn sẽ bị xoá vĩnh viễn. Hãy tải về bản sao trước nếu bạn cần lưu lại."
+        description={`Mọi CV, báo cáo phân tích, báo cáo phỏng vấn${ADVISOR_FEATURES ? " và nhận xét của cố vấn" : ""} sẽ bị xoá vĩnh viễn. Hãy tải về bản sao trước nếu bạn cần lưu lại.`}
         confirmLabel="Xoá vĩnh viễn"
         destructive
         onConfirm={onDeleteAll}

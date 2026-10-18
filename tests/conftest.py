@@ -11,6 +11,8 @@ os.environ["UPLOAD_DIR"] = str(_TMP / "uploads")
 os.environ["SEED_DEMO_COHORT"] = "false"
 # Test gọi API bằng header X-Demo-Role thay cho đăng nhập.
 os.environ["DEMO_LOGIN_ENABLED"] = "true"
+# Test vẫn kiểm các tính năng cố vấn (đang tạm ẩn ở bản chạy thật)
+os.environ["ADVISOR_FEATURES"] = "true"
 
 # Không gọi LLM thật khi chạy test (chậm, tốn credit): key rỗng → agent dùng quy tắc dự phòng.
 # Biến môi trường được ưu tiên hơn file .env nên ghi đè được key thật trong .env.

@@ -1,6 +1,14 @@
-// Cấu hình đọc từ biến môi trường NEXT_PUBLIC_* (xem frontend/.env.example).
+import { features } from "@/lib/features"
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
+const rawApiUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/+$/, "")
+
+// Khi chạy trên browser tại môi trường đã deploy (không phải localhost), dùng relative path ""
+// để request đi qua Next.js rewrites proxy. Điều này biến cookie thành First-Party Cookie,
+// giúp Safari / iOS Messenger / Chrome không bao giờ chặn cookie phiên đăng nhập.
+export const API_BASE_URL =
+  typeof window !== "undefined" && rawApiUrl.startsWith("http") && !rawApiUrl.includes("localhost")
+    ? ""
+    : rawApiUrl
 
 /**
  * Nhóm API trong lib/api.ts. Mỗi nhóm được chuyển từ mock sang backend thật độc lập,
@@ -46,3 +54,9 @@ export const OPTIMIZER_AVAILABLE = isLive("optimizer") || !isLive("gap")
 // Kịch bản dữ liệu mock: "empty" (mặc định, tài khoản demo sinh viên chưa có gì, giống tài khoản mới tạo)
 // | "sample" (Minh Anh có sẵn CV, phân tích, phỏng vấn… để xem thiết kế). Cố vấn demo luôn có nhóm SV mẫu.
 export const MOCK_SCENARIO = process.env.NEXT_PUBLIC_MOCK_SCENARIO ?? "empty"
+
+/** Vai trò cố vấn và các tính năng liên quan (tạm ẩn, xem lib/features.ts). */
+export const ADVISOR_FEATURES = features.advisor
+
+/** Nút "Dùng thử bản demo" ở trang Đăng nhập (tạm ẩn, xem lib/features.ts). */
+export const DEMO_TRY = features.demoTry

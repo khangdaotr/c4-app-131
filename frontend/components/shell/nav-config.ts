@@ -11,6 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 
+import { ADVISOR_FEATURES } from "@/lib/config"
 import type { Role } from "@/lib/types"
 
 export interface NavItem {
@@ -59,7 +60,8 @@ export const studentShell: ShellConfig = {
     { href: "/student/analysis/new", label: "Phân tích CV & JD", icon: ScanText, match: "/student/analysis", group: "Luyện tập", tab: "Phân tích" },
     { href: "/student/interview/new", label: "Luyện phỏng vấn", icon: MessagesSquare, match: "/student/interview", group: "Luyện tập", tab: "Phỏng vấn" },
     { href: "/student/history", label: "Tiến bộ", icon: TrendingUp, group: "Luyện tập" },
-    { href: "/student/share", label: "Chia sẻ với cố vấn", icon: Users, group: "Tài khoản" },
+    // Tính năng cố vấn đang tạm ẩn (lib/config.ts)
+    ...(ADVISOR_FEATURES ? [{ href: "/student/share", label: "Chia sẻ với cố vấn", icon: Users, group: "Tài khoản" }] : []),
     { href: "/student/settings", label: "Cài đặt", icon: SlidersHorizontal, group: "Tài khoản" },
   ],
   extraPages: [
@@ -132,7 +134,9 @@ export const adminShell: ShellConfig = {
   role: "admin",
   nav: [
     { href: "/admin", label: "Tổng quan", icon: LayoutGrid, tab: "Tổng quan" },
-    { href: "/admin/advisors", label: "Cố vấn", icon: UserRoundCheck, match: "/admin/advisors", group: "Quản lý", tab: "Cố vấn" },
+    ...(ADVISOR_FEATURES
+      ? [{ href: "/admin/advisors", label: "Cố vấn", icon: UserRoundCheck, match: "/admin/advisors", group: "Quản lý", tab: "Cố vấn" }]
+      : []),
     { href: "/admin/students", label: "Sinh viên", icon: Users, match: "/admin/students", group: "Quản lý", tab: "Sinh viên" },
     { href: "/admin/jds", label: "Thư viện JD", icon: Library, match: "/admin/jds", group: "Quản lý", tab: "JD" },
   ],

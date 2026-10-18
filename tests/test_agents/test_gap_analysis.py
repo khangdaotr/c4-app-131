@@ -231,7 +231,7 @@ def test_score_can_reach_zero_and_hundred_unclamped():
 
 @pytest.mark.asyncio
 async def test_llm_batch_scoring_is_cross_checked(monkeypatch, tmp_path):
-    """Kết quả LLM đánh giá 100% và guardrail kiểm tra chéo rewrite trước khi hiển thị."""
+    """Kết quả LLM được kiểm tra chéo bằng quy tắc anchor và guardrail trước khi hiển thị."""
     requirements = [
         {"name": "Power BI", "importance": "required"},
         {"name": "Excel", "importance": "required"},
@@ -243,9 +243,11 @@ async def test_llm_batch_scoring_is_cross_checked(monkeypatch, tmp_path):
         calls.append(1)
         return {
             "requirements": [
-                {"id": "r1", "match": 1, "evidence_lines": [4], "note": "Power BI thành thạo"},
-                {"id": "r2", "match": 0.5, "evidence_lines": [7], "note": "Excel chỉ mới liệt kê"},
-                {"id": "r3", "match": 0, "evidence_lines": [], "note": "Chưa thấy kinh nghiệm Thống kê"},
+                {"id": "r1", "match": 1, "evidence_lines": [4], "note": ""},
+                # Excel chỉ nằm ở mục Kỹ năng → phải hạ xuống 0.5 dù LLM chấm 1
+                {"id": "r2", "match": 1, "evidence_lines": [7], "note": ""},
+                # LLM khẳng định có nhưng không chỉ ra dòng bằng chứng → bỏ, dùng kết quả quy tắc (0)
+                {"id": "r3", "match": 1, "evidence_lines": [], "note": ""},
             ],
             "suggestions": [
                 {
@@ -290,10 +292,14 @@ async def test_llm_batch_scoring_is_cross_checked(monkeypatch, tmp_path):
     by_skill = {a["skill"]: a for a in result["assessments"]}
     assert by_skill["Power BI"]["match"] == 1
     assert (by_skill["Excel"]["match"], by_skill["Excel"]["source"]) == (0.5, "llm")
-    assert (by_skill["Thống kê"]["match"], by_skill["Thống kê"]["source"]) == (0, "llm")
+    assert (by_skill["Thống kê"]["match"], by_skill["Thống kê"]["source"]) == (0, "rule")
     assert [s["skill"] for s in result["suggestions"]] == ["Power BI"]
     assert len(result["manual_review_items"]) == 1
-    assert result["match_score"] == round((3 * 1 + 3 * 0.5 + 2 * 0) / 8 * 100, 1)
-    # Nhận xét 100% từ AI summary
-    assert result["gap_summary"] == "CV có bằng chứng tốt cho Power BI."
+    assert result["match_score"] == round((3 * 1 + 3 * 0.5 + 0) / 8 * 100, 1)
+    # Nhận xét ghép từ bảng cuối, không lấy lời LLM: Thống kê (Ưu tiên) thiếu, Excel mới liệt kê, Power BI đáp ứng
+    assert result["gap_summary"] == (
+        "Đáp ứng tốt: Power BI. Excel mới được liệt kê: thêm một câu mô tả bạn đã dùng kỹ năng này làm gì. "
+        "Còn thiếu yêu cầu Ưu tiên: Thống kê. Nên học và thực hành các kỹ năng này, ví dụ qua một dự án nhỏ, "
+        "trước khi ứng tuyển."
+    )
     assert len(calls) == 1 and result["llm_calls"] == 1

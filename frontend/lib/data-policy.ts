@@ -1,6 +1,8 @@
 // Nội dung Chính sách dữ liệu, dùng ở popup trang Đăng ký và link ở chân trang giới thiệu.
 // Hai cam kết "không bán dữ liệu" và "rút đồng ý thì tạm dừng tính năng AI" cần nhóm duyệt trước khi công bố.
 
+import { ADVISOR_FEATURES } from "@/lib/config"
+
 export const DATA_POLICY_UPDATED_AT = "11/10/2026"
 
 export const DATA_POLICY_SUMMARY = [
@@ -42,8 +44,13 @@ export const DATA_POLICY_SECTIONS: { title: string; items: string[] }[] = [
     title: "Ai xem được dữ liệu của bạn",
     items: [
       "Mặc định chỉ bạn xem được CV, câu trả lời và báo cáo của mình.",
-      "Cố vấn phụ trách chỉ xem nội dung những mục bạn bật chia sẻ, và mất quyền xem ngay khi bạn tắt.",
-      "Cố vấn luôn thấy số liệu tổng hợp: điểm từng buổi, mức thay đổi và ngày hoạt động gần nhất.",
+      // Tính năng cố vấn đang tạm ẩn (lib/config.ts)
+      ...(ADVISOR_FEATURES
+        ? [
+            "Cố vấn phụ trách chỉ xem nội dung những mục bạn bật chia sẻ, và mất quyền xem ngay khi bạn tắt.",
+            "Cố vấn luôn thấy số liệu tổng hợp: điểm từng buổi, mức thay đổi và ngày hoạt động gần nhất.",
+          ]
+        : []),
       "CareerV không bán dữ liệu và không chia sẻ cho nhà tuyển dụng.",
     ],
   },

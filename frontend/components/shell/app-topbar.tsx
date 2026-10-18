@@ -23,6 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { ADVISOR_FEATURES } from "@/lib/config"
 import type { Role } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -85,7 +86,7 @@ export function AppTopbar({ role }: { role: Role }) {
           <Search className="size-[19px]" strokeWidth={1.75} aria-hidden />
         </button>
         {role !== "admin" && <AssistantLauncher />}
-        {role !== "admin" && <ChatLauncher />}
+        {role !== "admin" && ADVISOR_FEATURES && <ChatLauncher />}
         <NotificationMenu role={role} />
         <ThemeToggleButton />
         <DropdownMenu>

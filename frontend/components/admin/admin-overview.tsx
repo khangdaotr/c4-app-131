@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/api"
+import { ADVISOR_FEATURES } from "@/lib/config"
 import { formatScore } from "@/lib/interview"
 import type { AdminPeriod, AdminStats } from "@/lib/types"
 import { useApi } from "@/lib/use-api"
@@ -69,7 +70,9 @@ export function AdminOverview() {
         description={
           !stats
             ? "Đang tải số liệu…"
-            : unassigned > 0
+            : !ADVISOR_FEATURES
+              ? "Số liệu người dùng, mức sử dụng và mức hài lòng của hệ thống."
+              : unassigned > 0
               ? `${formatCount(unassigned)} sinh viên mới đang chờ phân công cố vấn.`
               : "Mọi sinh viên đều đã có cố vấn phụ trách."
         }
@@ -95,7 +98,7 @@ function UsersZone({ stats }: { stats: AdminStats }) {
   const u = stats.users
   return (
     <Zone id="admin-users" title="Người dùng">
-      <div className="grid gap-x-12 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+      <div className={cn("grid gap-x-12 gap-y-10 sm:grid-cols-2", ADVISOR_FEATURES && "lg:grid-cols-3")}>
         <MetricColumn
           label="Sinh viên"
           value={formatCount(u.student_count)}
@@ -112,6 +115,8 @@ function UsersZone({ stats }: { stats: AdminStats }) {
           points={u.active_series}
           link={{ label: "Xem thêm", href: "/admin/students" }}
         />
+        {/* Tính năng cố vấn đang tạm ẩn (lib/config.ts) */}
+        {ADVISOR_FEATURES && (
         <div className="flex min-w-0 flex-col sm:col-span-2 lg:col-span-1">
           <h3 className="text-base font-semibold text-ink">Cố vấn & phân công</h3>
           <div className="mt-3.5 flex items-center gap-4 border-b border-line pb-[18px]">
@@ -135,6 +140,7 @@ function UsersZone({ stats }: { stats: AdminStats }) {
             </span>
           </div>
         </div>
+        )}
       </div>
     </Zone>
   )

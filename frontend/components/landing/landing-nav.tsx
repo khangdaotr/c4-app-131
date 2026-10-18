@@ -8,12 +8,13 @@ import { Logo } from "@/components/brand/logo"
 import { ThemeToggleButton } from "@/components/shell/theme-switch"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { ADVISOR_FEATURES } from "@/lib/config"
 import { cn } from "@/lib/utils"
 
 export const LANDING_LINKS = [
   { href: "#cach-dung", label: "Cách hoạt động" },
   { href: "#cam-ket", label: "Cam kết" },
-  { href: "#co-van", label: "Cho cố vấn" },
+  ...(ADVISOR_FEATURES ? [{ href: "#co-van", label: "Cho cố vấn" }] : []),
   { href: "#hoi-dap", label: "Hỏi đáp" },
 ]
 

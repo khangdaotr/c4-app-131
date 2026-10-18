@@ -14,6 +14,7 @@ import logging
 import re
 
 from src.config import get_settings
+from src.services.providers.gateway import provider_scope
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,8 @@ async def _invoke_llm_for_questions(prompt: str, timeout: float = 25.0) -> list[
 
     provider = settings.llm_provider.lower()
     if provider == "deepseek":
-        models_to_try = [settings.model_name or "deepseek-chat"]
+        # None: để get_chat_model chọn model DeepSeek hợp lệ (MODEL_NAME có thể là model của nhà cung cấp khác)
+        models_to_try: list[str | None] = [None]
     elif provider == "groq":
         models_to_try = [settings.model_name]
         if settings.model_name != "openai/gpt-oss-20b":
@@ -68,7 +70,11 @@ async def _invoke_llm_for_questions(prompt: str, timeout: float = 25.0) -> list[
     last_error: Exception | None = None
     for model_name in models_to_try:
         try:
-            llm = settings.get_chat_model(model=model_name, temperature=0.3)
+            llm = (
+                settings.get_chat_model(model=model_name, temperature=0.3)
+                if model_name
+                else settings.get_chat_model(temperature=0.3)
+            )
             response = await asyncio.wait_for(llm.ainvoke(prompt), timeout=timeout)
             content = response.content.strip()
 
@@ -127,13 +133,13 @@ async def generate_interview_questions(
     jd_snippet = (jd_text or "")[:3500].strip()
     cv_snippet = (cv_text or "")[:3500].strip()
 
-    output_format = f"""Trả về DUY NHẤT một mảng JSON 4 object (không kèm markdown khác):
-[
+    output_format = f"""Trả về DUY NHẤT một object JSON có mảng 4 câu hỏi (không kèm markdown khác):
+{{"questions": [
   {{"theme": "{THEMES[0]}", "question": "..."}},
   {{"theme": "{THEMES[1]}", "question": "..."}},
   {{"theme": "{THEMES[2]}", "question": "..."}},
   {{"theme": "{THEMES[3]}", "question": "..."}}
-]"""
+]}}"""
 
     if mode == "with_cv" and cv_snippet and len(cv_snippet) > 40:
         prompt = f"""Bạn là người phỏng vấn chuyên môn đang trực tiếp phỏng vấn ứng viên cho vị trí: {clean_role}.
@@ -190,6 +196,17 @@ NỘI DUNG CÂU HỎI:
 
 {output_format}"""
 
+    # Cổng gateway che tên, email, số điện thoại trong CV trước khi gửi; câu hỏi trả về được đổi mã ẩn về chữ thật
+    with provider_scope() as scope:
+        questions = await _questions(prompt)
+        return [(theme, _restore(scope, q)) for theme, q in questions]
+
+
+def _restore(scope, text: str) -> str:
+    return text if scope.mask_only else scope.restore_business(text)
+
+
+async def _questions(prompt: str) -> list[tuple[str, str]]:
     questions = _parse(await _invoke_llm_for_questions(prompt))
     problems = {i: p for i, (_, q) in enumerate(questions) if (p := question_problems(q))}
     if problems:

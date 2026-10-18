@@ -45,6 +45,7 @@ function fixture({ role = "student", acknowledge = true, loggingFails = false } 
     },
   }
   const navigation = load("lib/assistant-navigation.ts", {
+    "@/lib/config": { ADVISOR_FEATURES: true },
     "@/resources/routes.json": { default: JSON.parse(readFileSync(path.join(testDirectory, "../resources/routes.json"), "utf8")) },
     "@/resources/ui_registry.json": { default: JSON.parse(readFileSync(path.join(testDirectory, "../resources/ui_registry.json"), "utf8")) },
     "../../src/services/assistant/resources/routes.json": { default: JSON.parse(readFileSync(path.join(testDirectory, "../resources/routes.json"), "utf8")) },
@@ -647,4 +648,17 @@ test("restoring a conversation loads saved messages without replaying UI actions
   assert.equal(value.messages[1].interrupted, true)
   assert.equal(f.pushes.length, 0)
   assert.equal(f.requests.length, 0)
+})
+
+test("assistant cannot open advisor pages while advisor features are hidden", () => {
+  const registries = {
+    "@/resources/routes.json": { default: JSON.parse(readFileSync(path.join(testDirectory, "../resources/routes.json"), "utf8")) },
+    "@/resources/ui_registry.json": { default: JSON.parse(readFileSync(path.join(testDirectory, "../resources/ui_registry.json"), "utf8")) },
+  }
+  const hidden = load("lib/assistant-navigation.ts", { ...registries, "@/lib/config": { ADVISOR_FEATURES: false } })
+  const shown = load("lib/assistant-navigation.ts", { ...registries, "@/lib/config": { ADVISOR_FEATURES: true } })
+  assert.equal(hidden.resolveAssistantRoute("/student/share", "student"), null)
+  assert.equal(hidden.resolveAssistantRoute("/advisor/students", "advisor"), null)
+  assert.equal(shown.resolveAssistantRoute("/student/share", "student"), "/student/share")
+  assert.equal(hidden.resolveAssistantRoute("/student/history", "student"), "/student/history")
 })

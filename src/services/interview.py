@@ -26,6 +26,7 @@ from src.api.errors import AppError
 from src.db.models import CvVersion, InterviewSession, InterviewTurn, JobDescription, User
 from src.services import notifications
 from src.services.guardrails import check_input_safety
+from src.services.providers.gateway import provider_scope
 
 logger = logging.getLogger(__name__)
 
@@ -236,12 +237,14 @@ async def create_session(
     # Sinh bộ 4 câu hỏi STAR bám sát nội dung JD hoặc CV+JD (không dùng câu hỏi cố định)
     started = monotonic()
     try:
-        questions = await generate_interview_questions(
-            role=jd.title,
-            jd_text=jd.content,
-            cv_text=cv.content_text if cv else None,
-            mode=interview_mode,
-        )
+        # Che thông tin cá nhân của chính SV (tên, email, số điện thoại) trước khi gửi CV cho LLM
+        with provider_scope(user_id=user.id):
+            questions = await generate_interview_questions(
+                role=jd.title,
+                jd_text=jd.content,
+                cv_text=cv.content_text if cv else None,
+                mode=interview_mode,
+            )
         if len(questions) != len(FALLBACK_QUESTIONS):
             raise ValueError(f"LLM trả {len(questions)} câu hỏi")
     except Exception as e:

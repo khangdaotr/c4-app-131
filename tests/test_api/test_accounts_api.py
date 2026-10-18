@@ -16,7 +16,7 @@ from src.db.models import (
 )
 from src.db.seed import DEMO_STUDENT_ID
 from src.services import notifications
-from tests.helpers import STUDENT
+from tests.helpers import ADVISOR, STUDENT
 
 API = "/api/v1"
 NEW_EMAIL = "nguyenvana@gmail.com"
@@ -266,3 +266,26 @@ def test_reset_email_template_logo_and_escaping():
     assert "An &lt;b&gt;" in html and "<b>," not in html
     assert 'src="https://careerv.vn/logo.png"' in html and "token=abc&amp;x=1" in html
     assert "https://careerv.vn/reset-password?token=abc&x=1" in text and "30 phút" in text
+
+
+@pytest.mark.asyncio
+async def test_advisor_role_is_paused_when_feature_off(client, monkeypatch):
+    """Vai trò cố vấn tạm ẩn (ADVISOR_FEATURES=false): cố vấn không đăng nhập / gọi API được; SV và admin vẫn dùng."""
+    from src.config import get_settings
+    from src.db.models import User
+    from src.db.seed import DEMO_ADMIN_ID, DEMO_ADVISOR_ID, DEV_PASSWORDS
+
+    monkeypatch.setattr(get_settings(), "advisor_features", False)
+
+    async def login(user_id: str):
+        with SessionLocal() as db:
+            email = db.get(User, user_id).email
+        return await client.post(f"{API}/auth/login", json={"email": email, "password": DEV_PASSWORDS[user_id]})
+
+    advisor = await login(DEMO_ADVISOR_ID)
+    assert (advisor.status_code, advisor.json()["code"]) == (403, "advisor_disabled")
+    assert (await client.get(f"{API}/me", headers=ADVISOR)).status_code == 401
+    client.cookies.clear()
+    assert (await login(DEMO_STUDENT_ID)).status_code == 200
+    client.cookies.clear()
+    assert (await login(DEMO_ADMIN_ID)).status_code == 200

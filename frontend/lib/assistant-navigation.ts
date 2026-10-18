@@ -1,3 +1,4 @@
+import { ADVISOR_FEATURES } from "@/lib/config"
 import type { UIAction, UserRole } from "@/types/assistant"
 import routeData from "@/resources/routes.json"
 import uiData from "@/resources/ui_registry.json"
@@ -24,6 +25,8 @@ export function resolveUIRoute(action: Extract<UIAction, { type: "navigate" }>, 
     if (typeof value !== "string" || !identifier.test(value) || reserved.has(value)) return null
     path = path.replace("{" + key + "}", value)
   }
+  // Tính năng cố vấn đang tạm ẩn (lib/config.ts): trợ lý không mở trang chia sẻ hay trang của cố vấn
+  if (!ADVISOR_FEATURES && (path === "/student/share" || path.startsWith("/advisor"))) return null
   return path
 }
 

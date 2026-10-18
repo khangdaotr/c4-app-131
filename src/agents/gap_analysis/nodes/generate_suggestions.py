@@ -109,15 +109,10 @@ async def generate_suggestions_node(state: GapAnalysisState) -> dict[str, Any]:
             "kèm bằng chứng; nếu chưa, đây là kỹ năng nên học thêm."
         )
 
-    llm_summary = state.get("llm_summary")
-    summary = (
-        llm_summary or compose_summary(assessments, state.get("cv_lines", [])) or fallback_summary(assessments, score)
-    )
-
     return {
         "suggestions": suggestions,
         "recommendations": recommendations,
         "match_score": score,
         "score_breakdown": breakdown,
-        "gap_summary": summary,
+        "gap_summary": compose_summary(assessments, state.get("cv_lines", [])) or fallback_summary(assessments, score),
     }

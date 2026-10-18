@@ -213,13 +213,11 @@ async def compare_gap_node(state: GapAnalysisState) -> dict[str, Any]:
     missing = [a["skill"] for a in assessments if a["match"] == 0]
     taxonomy_matches = {a["skill"]: a["note"] for a in assessments if a["note"] and "taxonomy" in a["note"]}
     raw_suggestions = [s for s in (llm_data or {}).get("suggestions") or [] if isinstance(s, dict)]
-    llm_summary = str((llm_data or {}).get("summary") or "").strip() or None
     interview_focus = _interview_focus((llm_data or {}).get("interview_focus"), requirements, assessments)
 
     return {
         "assessments": assessments,
         "raw_suggestions": raw_suggestions,
-        "llm_summary": llm_summary,
         "interview_focus": interview_focus,
         "llm_used": llm_data is not None,
         "llm_calls": llm_calls,

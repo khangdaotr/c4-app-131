@@ -283,6 +283,8 @@ async def draft_rewrites(
     targets = rewrite_lines(lines)
     if not targets:
         return {"items": [], "kept": 0}
+    # Cổng gateway che thông tin cá nhân trong CV trước khi gửi; invoke_json đổi mã ẩn trong câu đề xuất về chữ thật
+    # (câu còn sót mã ẩn bị check_rewrite loại vì có dấu "[")
     data = await llm.invoke_json(
         _prompt(lines, targets, requirements, job), temperature=0.0, timeout=REWRITE_TIMEOUT_SECONDS
     )

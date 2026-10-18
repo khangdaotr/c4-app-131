@@ -27,6 +27,7 @@ from src.db.models import CvEditAudit, CvExport, CvOptimization, CvVersion, GapA
 from src.services import cv_files, cv_rewrite, cv_versions, llm
 from src.services.cv_layout import SECTION_LABELS_EN, cv_language, layout_lines
 from src.services.fit_summary import entry_title
+from src.services.providers.gateway import provider_scope
 from src.services.roadmap import get_roadmap_info
 from src.services.skill_matching import (
     BULLET_PREFIX,
@@ -437,9 +438,10 @@ async def prepare_suggestions(db: Session, user: User, analysis_id: str, now: da
     jd = db.get(JobDescription, analysis.jd_id)
     requirements = (analysis.result or {}).get("requirements", [])
     try:
-        drafted = await cv_rewrite.draft_rewrites(
-            split_cv_lines(cv.content_text), requirements, jd.title if jd else "", cv.content_text
-        )
+        with provider_scope(user_id=user.id):
+            drafted = await cv_rewrite.draft_rewrites(
+                split_cv_lines(cv.content_text), requirements, jd.title if jd else "", cv.content_text
+            )
         rewrites = {"status": "ready", **drafted, "attempted_at": now.isoformat()}
     except Exception as e:
         logger.warning("Soạn gợi ý viết lại cho %s thất bại: %s", analysis_id, e)

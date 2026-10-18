@@ -6,6 +6,7 @@ import { useState } from "react"
 import { DataPolicyDialog } from "@/components/auth/data-policy-dialog"
 import { Logo } from "@/components/brand/logo"
 import { Button } from "@/components/ui/button"
+import { ADVISOR_FEATURES } from "@/lib/config"
 
 /** Lời mời cuối trang trên nền pastel. */
 export function LandingCta() {
@@ -44,7 +45,7 @@ const COLUMNS: { title: string; links: { label: string; href?: string; policy?: 
     title: "Dành cho",
     links: [
       { label: "Sinh viên", href: "/register" },
-      { label: "Cố vấn hướng nghiệp", href: "/login" },
+      ...(ADVISOR_FEATURES ? [{ label: "Cố vấn hướng nghiệp", href: "/login" }] : []),
     ],
   },
   {

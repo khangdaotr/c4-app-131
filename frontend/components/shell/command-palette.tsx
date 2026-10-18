@@ -24,6 +24,7 @@ import { shellOf } from "@/components/shell/nav-config"
 import { THEME_OPTIONS } from "@/components/shell/theme-switch"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { api } from "@/lib/api"
+import { ADVISOR_FEATURES } from "@/lib/config"
 import type { AdminAdvisor, AdminStudent, AssignedStudent, JobDescription, Role } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -67,8 +68,13 @@ const STUDENT_ACTIONS = [
 ]
 
 const ADMIN_ACTIONS = [
-  item("Thao tác", "Thêm cố vấn", "/admin/advisors?new=1", UserPlus),
-  item("Thao tác", "Phân công sinh viên chưa có cố vấn", "/admin/students?filter=unassigned", UsersRound),
+  // Tính năng cố vấn đang tạm ẩn (lib/config.ts)
+  ...(ADVISOR_FEATURES
+    ? [
+        item("Thao tác", "Thêm cố vấn", "/admin/advisors?new=1", UserPlus),
+        item("Thao tác", "Phân công sinh viên chưa có cố vấn", "/admin/students?filter=unassigned", UsersRound),
+      ]
+    : []),
   item("Thao tác", "Thêm JD vào thư viện", "/admin/jds/new", FilePlus2),
 ]
 
@@ -77,7 +83,7 @@ const ACTIONS: Record<Role, PaletteItem[]> = { student: STUDENT_ACTIONS, advisor
 /** Quản trị viên tìm cả sinh viên lẫn cố vấn; chọn một người thì mở danh sách đã lọc sẵn theo email. */
 function adminRecords(people: { students: AdminStudent[]; advisors: AdminAdvisor[] }): PaletteItem[] {
   return [
-    ...people.advisors.map((a) =>
+    ...(ADVISOR_FEATURES ? people.advisors : []).map((a) =>
       item("Cố vấn", a.full_name, `/admin/advisors?q=${encodeURIComponent(a.email)}`, UserRoundCheck, a.title, a.email),
     ),
     ...people.students.map((s) =>
@@ -86,7 +92,7 @@ function adminRecords(people: { students: AdminStudent[]; advisors: AdminAdvisor
         s.full_name,
         `/admin/students?q=${encodeURIComponent(s.email)}`,
         UserRound,
-        s.advisor?.full_name ?? "Chưa phân công",
+        ADVISOR_FEATURES ? (s.advisor?.full_name ?? "Chưa phân công") : undefined,
         `${s.email} ${s.phone ?? ""}`,
       ),
     ),
@@ -116,7 +122,7 @@ export function CommandPalette({ role, open, onOpenChange }: { role: Role; open:
     if (role === "student" && jds === null) api.listJdLibrary().then(setJds, () => setJds([]))
     if (role === "advisor" && students === null) api.listAssignedStudents().then(setStudents, () => setStudents([]))
     if (role === "admin" && people === null) {
-      Promise.all([api.listAdminStudents(), api.listAdminAdvisors()]).then(
+      Promise.all([api.listAdminStudents(), ADVISOR_FEATURES ? api.listAdminAdvisors() : Promise.resolve([])]).then(
         ([s, a]) => setPeople({ students: s, advisors: a }),
         () => setPeople({ students: [], advisors: [] }),
       )
@@ -218,7 +224,7 @@ export function CommandPalette({ role, open, onOpenChange }: { role: Role; open:
             }}
             onKeyDown={onKeyDown}
             placeholder={
-              role === "student" ? "Tìm vị trí, kỹ năng, thao tác…" : role === "admin" ? "Tìm sinh viên, cố vấn, thao tác…" : "Tìm sinh viên, trang…"
+              role === "student" ? "Tìm vị trí, kỹ năng, thao tác…" : role === "admin" ? (ADVISOR_FEATURES ? "Tìm sinh viên, cố vấn, thao tác…" : "Tìm sinh viên, thao tác…") : "Tìm sinh viên, trang…"
             }
             role="combobox"
             aria-expanded

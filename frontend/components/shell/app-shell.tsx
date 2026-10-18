@@ -9,6 +9,7 @@ import { AppTopbar, PageCrumbs } from "@/components/shell/app-topbar"
 import { MobileTabBar } from "@/components/shell/mobile-tab-bar"
 import { ProfileProvider } from "@/components/shell/profile-context"
 import { SidebarNav } from "@/components/shell/sidebar-nav"
+import { ADVISOR_FEATURES } from "@/lib/config"
 import type { Role } from "@/lib/types"
 
 /**
@@ -31,10 +32,11 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
 }
 
 function Shell({ role, assistant = false, children }: { role: Role; assistant?: boolean; children: ReactNode }) {
-  // Quản trị viên không có tin nhắn (chỉ SV và cố vấn phụ trách nhắn cho nhau)
+  // Quản trị viên không có tin nhắn (chỉ SV và cố vấn phụ trách nhắn cho nhau); tính năng cố vấn tạm ẩn thì không ai có
+  const messaging = role !== "admin" && ADVISOR_FEATURES
   return (
     <ProfileProvider role={role}>
-      <ChatProvider role={role} enabled={role !== "admin"}>
+      <ChatProvider role={role} enabled={messaging}>
         <div className="min-h-screen bg-background [--tabbar-h:68px] lg:[--tabbar-h:0px]">
           <aside className="fixed inset-y-0 left-0 z-40 hidden w-[252px] overflow-x-hidden overflow-y-auto border-r border-line bg-card transition-[width] duration-200 ease-out lg:block sidebar-collapsed:w-[72px] sidebar-collapsed:overflow-visible">
             <SidebarNav role={role} />
@@ -57,7 +59,7 @@ function Shell({ role, assistant = false, children }: { role: Role; assistant?: 
             </>
           )}
         </div>
-        {role !== "admin" && <ChatPanel />}
+        {messaging && <ChatPanel />}
       </ChatProvider>
     </ProfileProvider>
   )

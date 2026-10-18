@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.errors import register_error_handlers
 from src.api.routes import router
-from src.api.security import OriginProtectionMiddleware
+from src.api.security import OriginProtectionMiddleware, trusted_origins
 from src.config import get_settings
 from src.db.database import init_db
 from src.models.schemas import HealthResponse
@@ -35,14 +35,19 @@ async def lifespan(app: FastAPI):
 
     init_db()
 
-    # Tự động nạp thư viện JD vào ChromaDB document store
-    try:
-        from src.db.seed import seed_vector_store
+    # Tự động nạp thư viện JD vào ChromaDB document store (bỏ qua ở production để tiết kiệm RAM dưới 512MB)
+    if settings.app_env != "production":
+        try:
+            from src.db.seed import seed_vector_store
 
-        indexed_count = seed_vector_store()
-        print(f"✅ Đã index {indexed_count} JD vào ChromaDB document store.")
-    except Exception:
-        print("⚠️ Indexing ChromaDB unavailable")
+            indexed_count = seed_vector_store()
+            print(f"✅ Đã index {indexed_count} JD vào ChromaDB document store.")
+        except Exception:
+            print("⚠️ Indexing ChromaDB unavailable")
+
+    import gc
+
+    gc.collect()
 
     print("=" * 60)
     print(f"🚀 {settings.app_name} starting in [{settings.app_env}] mode")
@@ -70,12 +75,13 @@ app = FastAPI(
 
 settings = get_settings()
 
-# Cấu hình CORS: hỗ trợ danh sách chỉ định và tự động cho phép mọi domain vercel.app
-cors_list = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
+# CORS: chỉ tin CORS_ORIGINS, FRONTEND_URL và (nếu đặt) mẫu CORS_ORIGIN_REGEX cho bản preview của dự án.
+# Không mở cho mọi *.vercel.app: kèm allow_credentials, trang lạ sẽ đọc được dữ liệu của SV đang đăng nhập.
+cors_list = sorted(trusted_origins())
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_list or ["*"],
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_origin_regex=settings.cors_origin_regex or None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

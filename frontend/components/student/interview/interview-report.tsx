@@ -14,6 +14,7 @@ import { Zone, ZoneLink } from "@/components/common/zone"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ADVISOR_FEATURES } from "@/lib/config"
 import { api } from "@/lib/api"
 import { formatDate } from "@/lib/format"
 import { STAR_META, STAR_ORDER, TREND_THRESHOLD } from "@/lib/interview"
@@ -91,16 +92,18 @@ function ReportView({ report }: { report: Report }) {
         description={meta}
         actions={
           <>
-            <Button
-              variant="ghost"
-              size="brand"
-              className="glass text-ink shadow-xs hover:bg-card"
-              nativeButton={false}
-              render={<Link href="/student/share" />}
-            >
-              <UserPlus strokeWidth={1.75} aria-hidden />
-              Chia sẻ với cố vấn
-            </Button>
+            {ADVISOR_FEATURES && (
+              <Button
+                variant="ghost"
+                size="brand"
+                className="glass text-ink shadow-xs hover:bg-card"
+                nativeButton={false}
+                render={<Link href="/student/share" />}
+              >
+                <UserPlus strokeWidth={1.75} aria-hidden />
+                Chia sẻ với cố vấn
+              </Button>
+            )}
             <Button size="brand" nativeButton={false} render={<Link href={retryHref} />}>
               Luyện lại vị trí này
               <ChevronRight aria-hidden />
@@ -111,7 +114,7 @@ function ReportView({ report }: { report: Report }) {
 
       <ScoreZone report={report} />
 
-      <div className="grid gap-14 lg:grid-cols-2 lg:gap-16">
+      <div className={cn("grid gap-14 lg:gap-16", ADVISOR_FEATURES && "lg:grid-cols-2")}>
         {/* Chỉ gợi ý khung trả lời, không viết sẵn câu trả lời chứa thành tích SV chưa nêu */}
         <Zone id="guidance-title" title="Hướng dẫn cải thiện" className="min-w-0 [&>div:last-child]:pt-2">
           <ol>
@@ -127,6 +130,7 @@ function ReportView({ report }: { report: Report }) {
           <p className="mt-3.5 text-[13px] text-ink-3">Hệ thống chỉ gợi ý cách trình bày, không viết sẵn câu trả lời.</p>
         </Zone>
 
+        {ADVISOR_FEATURES && (
         <Zone id="advisor-title" title="Nhận xét của cố vấn" className="min-w-0 [&>div:last-child]:pt-[22px]">
           {report.advisor_review ? (
             <AdvisorReview review={report.advisor_review} />
@@ -139,6 +143,7 @@ function ReportView({ report }: { report: Report }) {
             </div>
           )}
         </Zone>
+        )}
       </div>
 
       <Zone id="turns-title" title="Chi tiết từng câu" className="[&>div:last-child]:pt-1.5">

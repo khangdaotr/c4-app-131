@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { formatPercent } from "@/lib/analysis"
+import { ADVISOR_FEATURES } from "@/lib/config"
 import { formatDate } from "@/lib/format"
 import { STAR_META, STAR_ORDER, formatScore, trendOf } from "@/lib/interview"
 import type { AnalysisRow, CompareJdsResponse, CvProgress, InterviewProgress, InterviewRow } from "@/lib/types"
@@ -434,12 +435,12 @@ function TimelineRow({ entry }: { entry: TimelineEntry }) {
             <Icon className="size-3.5 sm:size-4" strokeWidth={1.75} aria-hidden />
             {entry.kind}
           </span>
-          {entry.reviewed && <span className="truncate text-accent-strong sm:hidden">· Cố vấn đã nhận xét</span>}
+          {ADVISOR_FEATURES && entry.reviewed && <span className="truncate text-accent-strong sm:hidden">· Cố vấn đã nhận xét</span>}
         </span>
         <span className="order-1 grid min-w-0 gap-0.5 sm:order-3">
           <span className="flex min-w-0 items-center gap-2.5">
             <span className="truncate text-[15px] font-medium">{entry.title}</span>
-            {entry.reviewed && (
+            {ADVISOR_FEATURES && entry.reviewed && (
               <Badge variant="blue" className="hidden sm:inline-flex">
                 Cố vấn đã nhận xét
               </Badge>

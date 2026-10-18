@@ -26,7 +26,8 @@ langgraph>=0.2.0
 # Database (uncomment as needed)
 sqlalchemy>=2.0.0
 # alembic>=1.14.0
-# psycopg2-binary>=2.9.0
+psycopg2-binary>=2.9.0
+psycopg[binary]>=3.1.0
 
 # Assistant RAG / Vector Store
 chromadb>=0.5.0

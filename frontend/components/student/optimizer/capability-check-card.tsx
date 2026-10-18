@@ -14,6 +14,7 @@ import type {
   CapabilityLineDecisionRequest,
   CvEntry,
 } from "@/lib/types"
+import { ADVISOR_FEATURES } from "@/lib/config"
 import { cn } from "@/lib/utils"
 
 /** Khớp giới hạn ở backend (src/services/cv_optimizer.py). */
@@ -361,7 +362,10 @@ export function CapabilityCheckCard({ check, entries, editable, onAnswer, onDraf
               </a>
             </>
           ) : (
-            <span>Không thêm vào CV. roadmap.sh chưa có lộ trình cho kỹ năng này; bạn có thể hỏi cố vấn hướng học phù hợp.</span>
+            <span>
+              Không thêm vào CV. roadmap.sh chưa có lộ trình cho kỹ năng này
+              {ADVISOR_FEATURES ? "; bạn có thể hỏi cố vấn hướng học phù hợp." : "."}
+            </span>
           )}
         </div>
       )}

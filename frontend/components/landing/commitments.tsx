@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 import { Check, FileText, Info, LockKeyhole, ShieldCheck, Sparkles, Trash2, UserRound, type LucideIcon } from "lucide-react"
 
 import { BrandMark } from "@/components/brand/logo"
+import { ADVISOR_FEATURES } from "@/lib/config"
 import { cn } from "@/lib/utils"
 
 import { SectionHeading } from "./landing-bits"
@@ -9,7 +10,13 @@ import styles from "./landing.module.css"
 
 const COMMITMENTS: { icon: LucideIcon; title: string; text: string }[] = [
   { icon: ShieldCheck, title: "Không bịa kinh nghiệm", text: "Kỹ năng chưa có không được thêm vào CV. Chỗ cần số liệu để trống cho bạn tự điền." },
-  { icon: LockKeyhole, title: "Mặc định là riêng tư", text: "Bạn bật chia sẻ riêng từng CV, từng buổi phỏng vấn và tắt lại bất cứ lúc nào." },
+  {
+    icon: LockKeyhole,
+    title: "Mặc định là riêng tư",
+    text: ADVISOR_FEATURES
+      ? "Bạn bật chia sẻ riêng từng CV, từng buổi phỏng vấn và tắt lại bất cứ lúc nào."
+      : "CV, câu trả lời và báo cáo của bạn chỉ mình bạn xem được.",
+  },
   { icon: Trash2, title: "Bạn giữ quyền xoá", text: "Tải về hoặc xoá toàn bộ dữ liệu của mình ngay trong Cài đặt." },
   { icon: Info, title: "Nói rõ giới hạn", text: "Điểm số giúp bạn biết nên luyện gì, không đảm bảo kết quả tuyển dụng." },
 ]
@@ -38,7 +45,8 @@ function Node({ icon, title, sub, className, style, children }: { icon?: LucideI
 }
 
 const LINE = "rgb(255 255 255 / 0.12)"
-const PATHS = ["M180 190 H270", "M510 190 H560 V96 H610", "M560 190 V284 H610", "M830 96 H866"]
+// Nhánh dưới (công tắc chia sẻ → Cố vấn) chỉ có khi bật tính năng cố vấn (lib/config.ts)
+const PATHS = ["M180 190 H270", "M510 190 H560 V96 H610", ...(ADVISOR_FEATURES ? ["M560 190 V284 H610"] : []), "M830 96 H866"]
 
 /** Sơ đồ luồng dữ liệu (desktop): đường chạy liên tục, công tắc chia sẻ tự bật/tắt và nhánh tới Cố vấn sáng theo. */
 function FlowDiagram() {
@@ -58,8 +66,12 @@ function FlowDiagram() {
             <path className={styles.flow} d={d} stroke="url(#night-line)" strokeWidth="2" />
           </g>
         ))}
-        <path d="M830 284 H866" stroke={LINE} strokeWidth="2" strokeDasharray="4 6" />
-        <path className={cn(styles.flow, styles.shareLine)} d="M830 284 H866" stroke="#B8A4FF" strokeWidth="2" />
+        {ADVISOR_FEATURES && (
+          <>
+            <path d="M830 284 H866" stroke={LINE} strokeWidth="2" strokeDasharray="4 6" />
+            <path className={cn(styles.flow, styles.shareLine)} d="M830 284 H866" stroke="#B8A4FF" strokeWidth="2" />
+          </>
+        )}
       </svg>
       <Node icon={FileText} title="CV của bạn" sub="PDF hoặc DOCX" className="absolute top-[156px] left-0 w-[180px]" />
       <div
@@ -76,10 +88,14 @@ function FlowDiagram() {
       </div>
       <Node icon={Check} title="Bạn duyệt từng gợi ý" sub="Áp dụng · Sửa · Bỏ qua" className="absolute top-[62px] left-[610px] w-[220px]" />
       <Node icon={FileText} title="CV phiên bản mới" sub="Tải về khi sẵn sàng" className="absolute top-[62px] left-[866px] w-[214px]" />
-      <Node title="Công tắc chia sẻ" sub="Mặc định tắt" className="absolute top-[250px] left-[610px] w-[220px]">
-        <span className={styles.nightSwitch} />
-      </Node>
-      <Node icon={UserRound} title="Cố vấn" sub="Chỉ xem mục bạn bật" className={cn(styles.shareNode, "absolute top-[250px] left-[866px] w-[214px]")} />
+      {ADVISOR_FEATURES && (
+        <>
+          <Node title="Công tắc chia sẻ" sub="Mặc định tắt" className="absolute top-[250px] left-[610px] w-[220px]">
+            <span className={styles.nightSwitch} />
+          </Node>
+          <Node icon={UserRound} title="Cố vấn" sub="Chỉ xem mục bạn bật" className={cn(styles.shareNode, "absolute top-[250px] left-[866px] w-[214px]")} />
+        </>
+      )}
     </div>
   )
 }
@@ -92,9 +108,13 @@ function FlowList() {
       <Node icon={FileText} title="CV của bạn" sub="PDF hoặc DOCX" className="relative" />
       <Node icon={Sparkles} title="CareerV" sub="Đọc CV · So khớp · Gợi ý · Chấm STAR" className="relative" />
       <Node icon={Check} title="Bạn duyệt từng gợi ý" sub="Áp dụng · Sửa · Bỏ qua" className="relative" />
-      <Node icon={UserRound} title="Cố vấn" sub="Chỉ xem mục bạn bật" className="relative">
-        <span className={styles.nightSwitch} />
-      </Node>
+      {ADVISOR_FEATURES ? (
+        <Node icon={UserRound} title="Cố vấn" sub="Chỉ xem mục bạn bật" className="relative">
+          <span className={styles.nightSwitch} />
+        </Node>
+      ) : (
+        <Node icon={FileText} title="CV phiên bản mới" sub="Tải về khi sẵn sàng" className="relative" />
+      )}
     </div>
   )
 }

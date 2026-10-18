@@ -26,9 +26,14 @@ class Settings(BaseSettings):
     app_host: str = "0.0.0.0"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
+    # Mẫu (regex) tên miền frontend được tin thêm, chỉ dùng cho bản preview Vercel của chính dự án. Phải khớp TOÀN BỘ
+    # origin và neo vào đuôi tên nhóm (team slug) của tài khoản Vercel, ví dụ
+    # ^https://c4-app-131-(git-[a-z0-9-]+|[a-z0-9]+)-ten-nhom\.vercel\.app$. Không dùng ".*\.vercel\.app" hay
+    # "c4-app-131.*": ai cũng tạo được trang *.vercel.app. Để trống = chỉ tin CORS_ORIGINS và FRONTEND_URL.
+    cors_origin_regex: str = ""
     auth_secret_key: SecretStr = SecretStr("")
     auth_session_ttl_seconds: int = Field(default=28800, ge=300, le=86400)
-    session_cookie_name: str = "careerx_session"
+    session_cookie_name: str = "careerv_session"
     _session_cookie_secure: bool | None = PrivateAttr(default=None)
     session_days: int = 30
     # "lax" cho cùng domain/localhost, "none" cho cross-site (Frontend Vercel + Backend Render)
@@ -41,6 +46,10 @@ class Settings(BaseSettings):
     result_facts_max_field_chars: int = Field(default=80, ge=1, le=500)
     demo_login_enabled: bool = False
     demo_account_password: str = "careerx123"
+    # Tài khoản quản trị khi deploy (APP_ENV=production không tạo tài khoản demo): khởi động mà chưa có tài khoản với
+    # email này thì tạo admin; đã có thì giữ nguyên (không đổi mật khẩu). Để trống = không tạo.
+    admin_email: str = ""
+    admin_password: SecretStr = SecretStr("")
 
     @property
     def session_cookie_secure(self) -> bool:
@@ -181,8 +190,13 @@ class Settings(BaseSettings):
     # Thư mục lưu file CV gốc do sinh viên tải lên
     upload_dir: str = "./data/uploads"
 
-    # Tạo nhóm SV giả định do cố vấn demo phụ trách (dữ liệu minh hoạ cho các trang Cố vấn)
-    seed_demo_cohort: bool = True
+    # Tạo nhóm SV giả định do cố vấn demo phụ trách (dữ liệu minh hoạ cho các trang Cố vấn). Mặc định tắt: trang Quản
+    # trị chỉ hiện dữ liệu thật; bật lại bằng SEED_DEMO_COHORT=true (code giữ ở src/db/demo_cohort.py)
+    seed_demo_cohort: bool = False
+
+    # Vai trò cố vấn (chia sẻ, nhắn tin, nhận xét, phân công) đang tạm ẩn: tài khoản cố vấn không đăng nhập được.
+    # Đặt ADVISOR_FEATURES=true (kèm NEXT_PUBLIC_FEATURE_ADVISOR=true ở frontend) để bật lại.
+    advisor_features: bool = False
     seed_student_a_password: SecretStr = SecretStr("")
     seed_student_b_password: SecretStr = SecretStr("")
     seed_advisor_password: SecretStr = SecretStr("")
@@ -283,32 +297,27 @@ class Settings(BaseSettings):
         return api_key, base_url
 
     def get_chat_model(self, **kwargs: Any):
-        """Khởi tạo Chat Model tương thích OpenAI API (hỗ trợ DeepSeek, Groq, OpenRouter, OpenAI)."""
-        import httpx
-        from langchain_openai import ChatOpenAI
+        """Chat model tương thích OpenAI API (DeepSeek, Groq, OpenRouter, OpenAI), luôn đi qua cổng gateway."""
+        from src.services.providers.gateway import GatewayChat
 
-        api_key, base_url = self.get_llm_credentials()
         temperature = kwargs.pop("temperature", self.llm_temperature)
         if self.llm_provider.lower() == "deepseek":
-            default_model = self.model_name if ("deepseek" in self.model_name.lower()) else "deepseek-v4.1-flash"
+            default_model = self.model_name if ("deepseek" in self.model_name.lower()) else "deepseek-chat"
         else:
             default_model = self.model_name
         model = kwargs.pop("model", default_model)
         if self.llm_reasoning_effort and is_reasoning_model(model):
             kwargs.setdefault("reasoning_effort", self.llm_reasoning_effort)
-
-        return ChatOpenAI(
-            model=model,
-            api_key=api_key or "sk-dummy-key-for-init",
-            base_url=base_url,
-            temperature=temperature,
-            http_async_client=httpx.AsyncClient(),
-            **kwargs,
-        )
+        if self.llm_provider.lower() == "deepseek":
+            # DeepSeek mặc định bật chế độ suy nghĩ: một lần sinh câu hỏi mất ~22 giây (tắt: ~3 giây). Dùng chung
+            # LLM_THINKING_AGENT với trợ lý (src/services/providers/llm_client.py) để bật / tắt ở một chỗ
+            thinking = "enabled" if self.llm_thinking_agent == "enabled" else "disabled"
+            kwargs.setdefault("extra_body", {"thinking": {"type": thinking}})
+        return GatewayChat(settings=self, model=model, temperature=temperature, **kwargs)
 
 
 def is_reasoning_model(model: str) -> bool:
-    """Model nhận tham số reasoning_effort; model khác (Llama, DeepSeek chat...) không gửi để tránh lỗi 400."""
+    """Model nhan tham so reasoning_effort; model khac khong gui de tranh loi 400."""
     name = model.lower().rsplit("/", 1)[-1]
     return name.startswith(("gpt-oss", "o1", "o3", "o4", "gpt-5"))
 

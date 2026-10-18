@@ -10,7 +10,7 @@ from langchain_core.messages import HumanMessage
 from openai import RateLimitError
 
 from src.config import get_settings
-from src.services.providers.gateway import GatewayChat, provider_scope, wrap_chat
+from src.services.providers.gateway import GatewayChat, GatewayError, provider_scope, wrap_chat
 from src.services.providers.llm_client import LlmClient
 
 # Tiền tố của key mẫu trong .env.example; key như vậy coi như chưa cấu hình LLM.
@@ -157,16 +157,25 @@ def retry_after_seconds(error: RateLimitError) -> float | None:
     return int(match.group(1) or 0) * 60 + float(match.group(2))
 
 
+class InvalidJsonError(GatewayError, ValueError):
+    """LLM không trả về object JSON hợp lệ. Không kèm nội dung câu trả lời (có thể chứa thông tin cá nhân)."""
+
+
 async def _invoke_json_once(prompt: str, temperature: float, timeout: float) -> dict[str, Any]:
     llm = get_settings().get_chat_model(temperature=temperature)
     response = await asyncio.wait_for(llm.ainvoke(prompt), timeout=timeout)
-    content = response.content if isinstance(response.content, str) else str(response.content)
-    match = re.search(r"\{.*\}", content, re.DOTALL)
-    if not match:
-        raise ValueError(f"LLM không trả về JSON: {content[:200]}")
-    data = json.loads(match.group(0))
-    if not isinstance(data, dict):
-        raise ValueError("JSON trả về không phải object")
+    data = None
+    try:
+        content = response.content if isinstance(response.content, str) else str(response.content)
+        match = re.search(r"\{.*\}", content, re.DOTALL)
+        if match is not None:
+            parsed = json.loads(match.group(0))
+            data = parsed if isinstance(parsed, dict) else None
+    except Exception:
+        pass
+    if data is None:
+        # Báo lỗi ngoài khối except: không giữ chuỗi ngoại lệ / nội dung câu trả lời của LLM
+        raise InvalidJsonError("LLM không trả về JSON object hợp lệ")
     return data
 
 
@@ -174,7 +183,16 @@ async def invoke_json(prompt: str, *, temperature: float = 0.1, timeout: float =
     """
     Gọi LLM và trả về object JSON trong câu trả lời. Thử lại một lần khi JSON hỏng / bị cắt, hoặc khi hết hạn mức
     theo phút mà chỉ cần chờ ngắn; vẫn lỗi thì báo lỗi để nơi gọi dùng phương án dự phòng.
+
+    Cổng gateway che thông tin cá nhân ở cả câu trả lời của LLM ("[[PERSON_..]]"): đổi mã ẩn về chữ thật trong cùng
+    phạm vi che (dùng lại phạm vi của nơi gọi nếu có) để mọi chữ LLM viết hiển thị cho SV không còn mã ẩn.
     """
+    with provider_scope() as scope:
+        data = await _invoke_json_with_retry(prompt, temperature, timeout)
+        return data if scope.mask_only else scope.restore_business(data)
+
+
+async def _invoke_json_with_retry(prompt: str, temperature: float, timeout: float) -> dict[str, Any]:
     try:
         return await _invoke_json_once(prompt, temperature, timeout)
     except RateLimitError as e:
@@ -182,6 +200,6 @@ async def invoke_json(prompt: str, *, temperature: float = 0.1, timeout: float =
         if wait is None or wait > RATE_LIMIT_MAX_WAIT_SECONDS:
             raise
         await asyncio.sleep(wait + 0.5)
-    except ValueError:  # gồm json.JSONDecodeError
+    except InvalidJsonError:  # JSON hỏng / bị cắt: thử lại một lần
         pass
     return await _invoke_json_once(prompt, temperature, timeout)

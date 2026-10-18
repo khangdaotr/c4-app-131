@@ -13,6 +13,12 @@ class Base(DeclarativeBase):
 
 
 def _create_engine(database_url: str):
+    # Dịch vụ Cloud (Neon, Render) thường trả URL bắt đầu bằng postgres:// hoặc postgresql://
+    # SQLAlchemy 2.0 ưu tiên tìm psycopg (v3). Ta ép dùng driver postgresql+psycopg2:// để tương thích psycopg2-binary
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql+psycopg2://", 1)
+    elif database_url.startswith("postgresql://"):
+        database_url = database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
     url = make_url(database_url)
     connect_args = {}
     if url.get_backend_name() == "sqlite":
@@ -56,6 +62,9 @@ def _relax_interview_cv_columns() -> None:
     SQLite không đổi được NOT NULL tại chỗ nên dựng lại bảng interview_sessions và chép toàn bộ buổi phỏng vấn cũ sang
     (không xoá dữ liệu). legacy_alter_table giữ khoá ngoại của interview_turns trỏ đúng bảng mới.
     """
+    if engine.dialect.name != "sqlite":
+        return
+
     with engine.begin() as conn:
         row = conn.execute(
             text("SELECT sql FROM sqlite_master WHERE type='table' AND name='interview_sessions'")
@@ -97,7 +106,7 @@ def init_db() -> None:
     from src.db.migrations.assistant_runs import upgrade as upgrade_assistant_runs
     from src.db.migrations.auth import upgrade as upgrade_auth
     from src.db.migrations.pii_vault import upgrade as upgrade_pii_vault
-    from src.db.seed import fail_interrupted_analyses, seed_demo_users, seed_jd_library
+    from src.db.seed import ensure_admin_account, fail_interrupted_analyses, seed_demo_users, seed_jd_library
     from src.services.cv_versions import backfill as backfill_cv_versions
     from src.services.cv_versions import backfill_ocr_flags
 
@@ -109,6 +118,7 @@ def init_db() -> None:
     _add_missing_columns()
     with SessionLocal() as db:
         seed_demo_users(db)
+        ensure_admin_account(db)
         seed_jd_library(db)
         if get_settings().app_env != "production" and get_settings().seed_demo_cohort:
             seed_demo_cohort(db)

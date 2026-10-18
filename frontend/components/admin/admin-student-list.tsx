@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/api"
+import { ADVISOR_FEATURES } from "@/lib/config"
 import { formatDate, formatRelativeTime } from "@/lib/format"
 import type { AdminStudent } from "@/lib/types"
 import { useApi } from "@/lib/use-api"
@@ -25,8 +26,12 @@ import { cn } from "@/lib/utils"
 export type AssignFilter = "all" | "unassigned" | "assigned"
 
 const PAGE_SIZE = 20
-const ROW_GRID =
-  "@4xl:grid @4xl:grid-cols-[22px_minmax(220px,1.6fr)_130px_minmax(170px,1.1fr)_110px_120px_64px] @4xl:items-center @4xl:gap-4"
+// Tính năng cố vấn tạm ẩn (lib/config.ts): bỏ ô chọn, cột Cố vấn và nút Gán / Đổi
+const ROW_GRID = ADVISOR_FEATURES
+  ? "@4xl:grid @4xl:grid-cols-[22px_minmax(220px,1.6fr)_130px_minmax(170px,1.1fr)_110px_120px_64px] @4xl:items-center @4xl:gap-4"
+  : "@4xl:grid @4xl:grid-cols-[minmax(220px,1.6fr)_130px_110px_120px] @4xl:items-center @4xl:gap-4"
+// Cột nội dung trên điện thoại (cột 1 là ô chọn khi có phân công cố vấn)
+const BODY_COL = ADVISOR_FEATURES ? "col-start-2" : "col-start-1"
 const CHECKBOX =
   "size-[18px] rounded-[5px] border-line-strong bg-card data-checked:border-ink data-checked:bg-ink data-checked:text-on-ink data-indeterminate:border-ink data-indeterminate:bg-ink data-indeterminate:text-on-ink"
 
@@ -45,8 +50,8 @@ export function AdminStudentList({
 }) {
   const { data: students, error, reload } = useApi(api.listAdminStudents)
   const advisors = useApi(api.listAdminAdvisors)
-  const [filter, setFilter] = useState<AssignFilter>(initialFilter)
-  const [advisorFilter, setAdvisorFilter] = useState(initialAdvisor)
+  const [filter, setFilter] = useState<AssignFilter>(ADVISOR_FEATURES ? initialFilter : "all")
+  const [advisorFilter, setAdvisorFilter] = useState(ADVISOR_FEATURES ? initialAdvisor : "all")
   const [query, setQuery] = useState(initialQuery)
   const [page, setPage] = useState(0)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -120,9 +125,11 @@ export function AdminStudentList({
       <PageHeader
         title="Sinh viên"
         description={
-          students
-            ? `${formatCount(counts.all)} sinh viên, ${formatCount(counts.unassigned)} người chưa được phân công cố vấn.`
-            : "Đang tải danh sách…"
+          !students
+            ? "Đang tải danh sách…"
+            : ADVISOR_FEATURES
+              ? `${formatCount(counts.all)} sinh viên, ${formatCount(counts.unassigned)} người chưa được phân công cố vấn.`
+              : `${formatCount(counts.all)} sinh viên.`
         }
       />
 
@@ -142,6 +149,8 @@ export function AdminStudentList({
       ) : (
         <section aria-label="Danh sách sinh viên" className="@container min-w-0">
           <div className="flex flex-wrap items-center gap-3 pb-2">
+            {ADVISOR_FEATURES && (
+              <>
             <SegmentedControl
               aria-label="Lọc theo phân công"
               size="sm"
@@ -188,6 +197,8 @@ export function AdminStudentList({
                 </SelectContent>
               </Select>
             </div>
+              </>
+            )}
             <span className="hidden flex-1 lg:block" />
             <div className="relative w-full lg:w-[280px]">
               <Search className="pointer-events-none absolute top-1/2 left-3.5 z-[1] size-4 -translate-y-1/2 text-ink-3" strokeWidth={1.75} aria-hidden />
@@ -206,6 +217,7 @@ export function AdminStudentList({
           </div>
 
           <div className={cn("hidden border-b border-line py-3 text-[13px] text-ink-3", ROW_GRID)}>
+            {ADVISOR_FEATURES && (
             <Checkbox
               aria-label="Chọn tất cả sinh viên trên trang này"
               className={CHECKBOX}
@@ -214,12 +226,13 @@ export function AdminStudentList({
               onCheckedChange={(on) => togglePage(on)}
               disabled={rows.length === 0}
             />
+            )}
             <span>Sinh viên</span>
             <span>Số điện thoại</span>
-            <span>Cố vấn</span>
+            {ADVISOR_FEATURES && <span>Cố vấn</span>}
             <span>Ngày tạo</span>
             <span>Hoạt động</span>
-            <span />
+            {ADVISOR_FEATURES && <span />}
           </div>
 
           {!students ? (
@@ -229,7 +242,11 @@ export function AdminStudentList({
               ))}
             </div>
           ) : students.length === 0 ? (
-            <EmptyState icon={Users} title="Chưa có sinh viên" description="Sinh viên tự tạo tài khoản sẽ hiện ở đây để bạn phân công cố vấn." />
+            <EmptyState
+              icon={Users}
+              title="Chưa có sinh viên"
+              description={`Sinh viên tự tạo tài khoản sẽ hiện ở đây${ADVISOR_FEATURES ? " để bạn phân công cố vấn" : ""}.`}
+            />
           ) : rows.length === 0 ? (
             <EmptyState
               icon={SearchX}
@@ -261,12 +278,15 @@ export function AdminStudentList({
                   <li
                     key={s.id}
                     className={cn(
-                      "grid grid-cols-[22px_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1.5 border-b border-line py-3.5 transition-colors",
+                      "grid items-start gap-x-3 gap-y-1.5 border-b border-line py-3.5 transition-colors",
+                      ADVISOR_FEATURES ? "grid-cols-[22px_minmax(0,1fr)_auto]" : "grid-cols-[minmax(0,1fr)]",
                       ROW_GRID,
                       on && "-mx-3 rounded-[10px] border-transparent bg-panel px-3",
                     )}
                   >
-                    <Checkbox aria-label={`Chọn ${s.full_name}`} className={cn(CHECKBOX, "mt-2.5 @4xl:mt-0")} checked={on} onCheckedChange={(v) => toggle(s.id, v)} />
+                    {ADVISOR_FEATURES && (
+                      <Checkbox aria-label={`Chọn ${s.full_name}`} className={cn(CHECKBOX, "mt-2.5 @4xl:mt-0")} checked={on} onCheckedChange={(v) => toggle(s.id, v)} />
+                    )}
                     <span className="flex min-w-0 items-center gap-3">
                       <StudentAvatar name={s.full_name} src={s.avatar_url} />
                       <span className="min-w-0">
@@ -274,7 +294,8 @@ export function AdminStudentList({
                         <span className="block truncate text-[13px] text-ink-3">{s.email}</span>
                       </span>
                     </span>
-                    <span className="col-start-2 text-sm text-ink-2 tabular-nums @4xl:col-auto">{s.phone ?? "—"}</span>
+                    <span className={cn(BODY_COL, "text-sm text-ink-2 tabular-nums @4xl:col-auto")}>{s.phone ?? "—"}</span>
+                    {ADVISOR_FEATURES && (
                     <span className="col-start-2 min-w-0 text-sm @4xl:col-auto">
                       {s.advisor ? (
                         <span className={cn("block truncate", s.advisor.disabled ? "text-ink-3" : "text-ink-2")}>
@@ -288,7 +309,8 @@ export function AdminStudentList({
                         </Badge>
                       )}
                     </span>
-                    <span className="col-start-2 text-sm text-ink-2 @4xl:col-auto">
+                    )}
+                    <span className={cn(BODY_COL, "text-sm text-ink-2 @4xl:col-auto")}>
                       <span className="text-ink-3 @4xl:hidden">Tạo </span>
                       {formatDate(s.created_at)}
                       <span className="text-ink-3 @4xl:hidden"> · {s.last_active_at ? formatRelativeTime(s.last_active_at).toLowerCase() : "chưa dùng"}</span>
@@ -296,6 +318,7 @@ export function AdminStudentList({
                     <span className="hidden text-sm text-ink-2 @4xl:block">
                       {s.last_active_at ? formatRelativeTime(s.last_active_at) : "Chưa dùng"}
                     </span>
+                    {ADVISOR_FEATURES && (
                     <span className="col-start-3 row-start-1 text-right @4xl:col-auto @4xl:row-auto">
                       <button
                         type="button"
@@ -306,6 +329,7 @@ export function AdminStudentList({
                         {s.advisor ? "Đổi" : "Gán"}
                       </button>
                     </span>
+                    )}
                   </li>
                 )
               })}
@@ -330,7 +354,7 @@ export function AdminStudentList({
             </div>
           )}
 
-          {selected.size > 0 && (
+          {ADVISOR_FEATURES && selected.size > 0 && (
             <div className="sticky bottom-[calc(var(--tabbar-h)+16px)] z-20 mt-7">
               <div className="flex items-center gap-3 rounded-card bg-ink py-3 pr-3 pl-4 text-on-ink shadow-[0_20px_40px_-18px_rgba(24,24,27,.5)] sm:gap-3.5 sm:pr-3.5 sm:pl-5">
                 <span className="font-semibold whitespace-nowrap tabular-nums">
@@ -350,6 +374,7 @@ export function AdminStudentList({
         </section>
       )}
 
+      {ADVISOR_FEATURES && (
       <AssignDialog
         students={assigning}
         advisors={advisors.data ?? []}
@@ -360,6 +385,7 @@ export function AdminStudentList({
           advisors.reload()
         }}
       />
+      )}
     </div>
   )
 }

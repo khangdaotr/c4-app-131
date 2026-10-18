@@ -51,6 +51,9 @@ def get_current_user(
     user = _session_user(db, session_token, None if assistant_request else x_demo_role)
     if user.disabled_at is not None:
         raise AppError(401, "Tài khoản đã bị tạm khoá. Hãy liên hệ quản trị viên.", "account_disabled")
+    if user.role == "advisor" and not get_settings().advisor_features:
+        # Phiên cố vấn còn lưu từ trước khi tạm ẩn vai trò cố vấn
+        raise AppError(401, auth.ADVISOR_PAUSED, "advisor_disabled")
     if user.must_change_password and not request.url.path.startswith(_ALLOWED_WITH_TEMP_PASSWORD):
         raise AppError(403, "Hãy đổi mật khẩu tạm trước khi tiếp tục.", "password_change_required")
     now = utcnow()

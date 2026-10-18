@@ -10,6 +10,7 @@ import { FormAlert, PasswordField, TextField, isEmail, type FieldHint } from "@/
 import { DemoRoleDialog } from "@/components/auth/demo-role-dialog"
 import { Button } from "@/components/ui/button"
 import { api, ApiError } from "@/lib/api"
+import { DEMO_TRY } from "@/lib/config"
 import { landingOf, setAuthMode, type AuthMode } from "@/lib/session"
 
 export function LoginForm({ expired = false }: { expired?: boolean }) {
@@ -105,17 +106,22 @@ export function LoginForm({ expired = false }: { expired?: boolean }) {
           {busy ? "Đang đăng nhập…" : "Đăng nhập"}
         </Button>
       </form>
-      <OrDivider />
-      <Button variant="outline" size="brand" className="h-12 w-full border-line-strong bg-card text-ink hover:bg-panel" onClick={() => setDemoOpen(true)}>
-        Dùng thử bản demo
-      </Button>
+      {/* "Dùng thử bản demo" đang tạm ẩn (lib/config.ts) */}
+      {DEMO_TRY && (
+        <>
+          <OrDivider />
+          <Button variant="outline" size="brand" className="h-12 w-full border-line-strong bg-card text-ink hover:bg-panel" onClick={() => setDemoOpen(true)}>
+            Dùng thử bản demo
+          </Button>
+        </>
+      )}
       <p className="text-center text-sm text-ink-2">
         Chưa có tài khoản?{" "}
         <Link href="/register" className="font-semibold">
           Tạo tài khoản
         </Link>
       </p>
-      <DemoRoleDialog open={demoOpen} onOpenChange={setDemoOpen} onPick={fillDemo} />
+      {DEMO_TRY && <DemoRoleDialog open={demoOpen} onOpenChange={setDemoOpen} onPick={fillDemo} />}
     </AuthCard>
   )
 }

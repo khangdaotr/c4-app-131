@@ -3,6 +3,7 @@
 import { useId, useState } from "react"
 import { Plus } from "lucide-react"
 
+import { ADVISOR_FEATURES } from "@/lib/config"
 import { cn } from "@/lib/utils"
 
 import { SectionHeading } from "./landing-bits"
@@ -14,7 +15,12 @@ const FAQS = [
     "Không. Khi JD yêu cầu điều bạn chưa có, CareerV hỏi bạn có kinh nghiệm hay không và chỉ ghi những gì bạn xác nhận. Kỹ năng đang học được ghi rõ là đang học.",
   ],
   ["CV cần định dạng gì?", "PDF hoặc DOCX, tối đa 10 MB. File PDF dạng ảnh chụp chưa đọc được chữ, bạn nên xuất PDF trực tiếp từ Word hoặc Google Docs."],
-  ["Ai xem được CV và báo cáo phỏng vấn của tôi?", "Chỉ bạn. Cố vấn chỉ xem được những mục bạn bật chia sẻ, và bạn tắt lại bất cứ lúc nào."],
+  [
+    "Ai xem được CV và báo cáo phỏng vấn của tôi?",
+    ADVISOR_FEATURES
+      ? "Chỉ bạn. Cố vấn chỉ xem được những mục bạn bật chia sẻ, và bạn tắt lại bất cứ lúc nào."
+      : "Chỉ bạn. CareerV không chia sẻ CV hay báo cáo của bạn cho người khác.",
+  ],
   [
     "Điểm phỏng vấn được chấm thế nào?",
     "Mỗi câu trả lời được chấm theo 4 tiêu chí Bối cảnh, Nhiệm vụ, Hành động, Kết quả trên thang 5. Điểm chỉ so giữa các buổi cùng vị trí; cố vấn có thể thêm nhận xét nhưng không sửa điểm.",

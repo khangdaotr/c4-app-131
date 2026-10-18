@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState, type ReactNode } from "react"
 
 import { api, ApiError } from "@/lib/api"
-import { isLive } from "@/lib/config"
+import { ADVISOR_FEATURES, isLive } from "@/lib/config"
 import { clearAuthMode, getAuthMode, homeOf } from "@/lib/session"
 import type { Role } from "@/lib/types"
 
@@ -21,6 +21,12 @@ export function AuthGuard({ role, children }: { role: Role; children: ReactNode 
   useEffect(() => {
     const mode = getAuthMode()
     if (!mode) {
+      router.replace("/login")
+      return
+    }
+    if (mode.role === "advisor" && !ADVISOR_FEATURES) {
+      // Vai trò cố vấn đang tạm ẩn (lib/config.ts): phiên cố vấn còn lưu thì đăng xuất
+      clearAuthMode()
       router.replace("/login")
       return
     }

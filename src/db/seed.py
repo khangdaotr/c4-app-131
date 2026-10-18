@@ -181,6 +181,43 @@ def seed_jd_library(db: Session) -> None:
     backfill_structure(db)
 
 
+def ensure_admin_account(db: Session) -> None:
+    """
+    Tạo tài khoản quản trị từ ADMIN_EMAIL / ADMIN_PASSWORD (chạy cả khi APP_ENV=production, nơi không có tài khoản
+    demo). Đã có tài khoản với email này thì giữ nguyên, không đổi mật khẩu (admin tự đổi trên web không bị ghi đè).
+    Không bao giờ ghi mật khẩu ra log.
+    """
+    import logging
+    import uuid
+
+    from src.api.errors import AppError
+    from src.services.auth import check_password_rules, find_by_email, normalize_email
+
+    settings = get_settings()
+    email = normalize_email(settings.admin_email)
+    password = settings.admin_password.get_secret_value()
+    if not email or not password:
+        return
+    if find_by_email(db, email) is not None:
+        return
+    try:
+        check_password_rules(password)
+    except AppError:
+        logging.getLogger(__name__).warning("ADMIN_PASSWORD quá yếu (cần ≥ 8 ký tự, có chữ và số): chưa tạo admin")
+        return
+    db.add(
+        User(
+            id=f"qt-{uuid.uuid4().hex[:10]}",
+            role="admin",
+            full_name="Quản trị CareerV",
+            subtitle="Quản trị hệ thống",
+            email=email,
+            password_hash=hash_password(password),
+        )
+    )
+    db.commit()
+
+
 def fail_interrupted_analyses(db: Session) -> None:
     """Lượt phân tích đang chạy dở khi máy chủ tắt sẽ không bao giờ xong; đánh dấu lỗi để SV chạy lại."""
     db.execute(

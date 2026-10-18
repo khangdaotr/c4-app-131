@@ -177,11 +177,11 @@ def test_feedback_is_plain_text_with_three_parts():
 
 
 def test_evaluate_answer_fallback_structural_scoring():
-    """Fallback đánh giá khách quan dựa trên cấu trúc câu và số lượng từ, không dùng từ khóa thụ động."""
+    """Fallback chấm theo tín hiệu khách quan (kể đủ các bước, vai trò cá nhân, con số), không đếm từ khoá."""
     detailed_answer = (
         "Trong dự án backend, nhiệm vụ của tôi là chọn giải pháp lưu trữ cache cho session. "
-        "Tôi đã quyết định sử dụng Redis thay vì Memcached vì Redis hỗ trợ cấu trúc dữ liệu phong phú hơn "
-        "và có cơ chế persistence, mặc dù chi phí RAM có phần cao hơn so với giải pháp thông thường. "
+        "Tôi đã quyết định sử dụng Redis thay vì Memcached vì Redis hỗ trợ cấu trúc dữ liệu phong phú hơn. "
+        "Redis còn có cơ chế persistence, mặc dù chi phí RAM có phần cao hơn so với giải pháp thông thường. "
         "Kết quả giúp hệ thống chạy ổn định và giảm 40% latency."
     )
     result = evaluate_answer_fallback(

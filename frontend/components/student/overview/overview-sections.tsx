@@ -29,6 +29,7 @@ import { WidgetFooter, Zone, ZoneLink } from "@/components/common/zone"
 import { IMPORTANCE_META } from "@/components/student/analysis/jd-picker-sections"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { ADVISOR_FEATURES } from "@/lib/config"
 import { ANALYSIS_STEPS, MATCH_LABEL_META, formatPercent } from "@/lib/analysis"
 import { formatDate, formatRelativeTime } from "@/lib/format"
 import {
@@ -313,7 +314,7 @@ export function NextTasks({ overview }: { overview: StudentOverview }) {
         <nav aria-label="Lối tắt" className="flex min-w-[240px] flex-[1_1_240px] flex-col gap-2.5 lg:flex-[0_1_300px]">
           <QuickLink icon={Library} label="Mở Thư viện JD" href="/student/library" />
           <QuickLink icon={FileUp} label="Tải lên CV mới" href="/student/cv" />
-          <QuickLink icon={Mail} label="Nhắn tin cho cố vấn" onClick={() => openChat()} />
+          {ADVISOR_FEATURES && <QuickLink icon={Mail} label="Nhắn tin cho cố vấn" onClick={() => openChat()} />}
         </nav>
       </div>
     </SoftPanel>

@@ -168,6 +168,10 @@ def end_all_sessions(db: Session, user: User) -> None:
 # ---------- Đăng nhập / đăng ký ----------
 
 
+# Vai trò cố vấn đang tạm ẩn (settings.advisor_features)
+ADVISOR_PAUSED = "Tính năng dành cho cố vấn đang tạm ngưng. Hãy liên hệ quản trị viên."
+
+
 def login(db: Session, email: str, password: str) -> User:
     settings = get_settings()
     now = utcnow()
@@ -200,6 +204,8 @@ def login(db: Session, email: str, password: str) -> User:
     db.commit()
     if user.disabled_at is not None:
         raise AppError(403, "Tài khoản đã bị tạm khoá. Hãy liên hệ quản trị viên.", "account_disabled")
+    if user.role == "advisor" and not settings.advisor_features:
+        raise AppError(403, ADVISOR_PAUSED, "advisor_disabled")
     return user
 
 

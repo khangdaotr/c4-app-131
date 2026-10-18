@@ -1,3 +1,5 @@
+import { ADVISOR_FEATURES } from "@/lib/config"
+
 import { Commitments } from "./commitments"
 import { ForAdvisors } from "./for-advisors"
 import { HowItWorks } from "./how-it-works"
@@ -20,7 +22,8 @@ export function LandingPage() {
         <PainPoints />
         <HowItWorks />
         <Commitments />
-        <ForAdvisors />
+        {/* Tính năng cố vấn đang tạm ẩn (lib/config.ts) */}
+        {ADVISOR_FEATURES && <ForAdvisors />}
         <LandingFaq />
         <LandingCta />
       </main>

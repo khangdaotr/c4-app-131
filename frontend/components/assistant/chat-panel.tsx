@@ -30,6 +30,7 @@ import { getBreadcrumb, shellOf } from "@/components/shell/nav-config"
 import { useProfile } from "@/components/shell/profile-context"
 import { deleteFeedback, getAssistantStatus, submitFeedback, type AssistantStatusResponse } from "@/lib/assistant-api"
 import { isAssistantRefusal } from "@/lib/assistant-response"
+import { ADVISOR_FEATURES } from "@/lib/config"
 import { cn } from "@/lib/utils"
 import type { UserRole } from "@/types/assistant"
 
@@ -37,11 +38,11 @@ import type { UserRole } from "@/types/assistant"
 const SUGGESTIONS: [RegExp, string[]][] = [
   [/^\/student\/analysis/, ["Nút bắt đầu phân tích ở đâu?", "Mức phù hợp được tính thế nào?", "Dán JD cần những gì?", "So sánh nhiều vị trí cùng lúc thế nào?"]],
   [/^\/student\/cv/, ["Làm sao để tải CV lên?", "CV hỗ trợ định dạng nào?", "Đổi CV đang dùng thế nào?", "Khôi phục phiên bản cũ ra sao?"]],
-  [/^\/student\/interview/, ["Trả lời theo khung STAR thế nào?", "Mỗi tuần được luyện mấy buổi?", "Xem báo cáo buổi cũ ở đâu?", "Chia sẻ báo cáo cho cố vấn thế nào?"]],
+  [/^\/student\/interview/, ["Trả lời theo khung STAR thế nào?", "Mỗi tuần được luyện mấy buổi?", "Xem báo cáo buổi cũ ở đâu?", ADVISOR_FEATURES ? "Chia sẻ báo cáo cho cố vấn thế nào?" : "Điểm STAR được chấm thế nào?"]],
   [/^\/student\/history/, ["Lọc chỉ các buổi phỏng vấn thế nào?", "Vì sao chưa thấy mức tiến bộ?", "Mở lại kết quả phân tích cũ ở đâu?"]],
   [/^\/student\/library/, ["Thêm JD từ tin tuyển dụng bên ngoài thế nào?", "Mức phù hợp trong thư viện nghĩa là gì?", "Lưu vị trí để dùng lại thế nào?"]],
   [/^\/student\/share/, ["Cố vấn xem được những gì?", "Tắt chia sẻ thì cố vấn còn thấy điểm không?", "Xem nhận xét của cố vấn ở đâu?"]],
-  [/^\/student/, ["Bắt đầu phân tích CV thế nào?", "Luyện phỏng vấn thử thế nào?", "Thêm JD của tôi ở đâu?", "Chia sẻ kết quả với cố vấn thế nào?"]],
+  [/^\/student/, ["Bắt đầu phân tích CV thế nào?", "Luyện phỏng vấn thử thế nào?", "Thêm JD của tôi ở đâu?", ADVISOR_FEATURES ? "Chia sẻ kết quả với cố vấn thế nào?" : "Tối ưu CV thế nào?"]],
   [/^\/advisor\/students/, ["Lọc sinh viên cần chú ý thế nào?", "Gửi nhận xét buổi phỏng vấn ra sao?", "Ghi chú khác nhận xét thế nào?"]],
   [/^\/advisor/, ["Sinh viên cần chú ý là gì?", "Tỷ lệ hoạt động 30 ngày nghĩa là gì?", "Tìm buổi chờ nhận xét ở đâu?", "Vì sao không xem được CV của sinh viên?"]],
 ]

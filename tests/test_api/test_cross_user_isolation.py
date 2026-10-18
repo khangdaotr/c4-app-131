@@ -242,7 +242,9 @@ async def test_recommendations_cannot_leak_private_vector_candidates(client, ide
         json={"cv_version_id": resources["a"]["cv"], "generate_advice": False},
     )
     assert response.status_code == 200, response.text
-    assert response.json()["recommendations"] == []
+    # Gợi ý chấm cả thư viện JD công khai; JD riêng của người khác (ứng viên từ kho vector) không được lọt vào
+    assert all(r["jd_id"] != resources["b"]["jd"] for r in response.json()["recommendations"])
+    assert "PRIVATE-" not in response.text
 
 
 ADVISOR_PATHS = [
