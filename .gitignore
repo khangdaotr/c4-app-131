@@ -52,8 +52,11 @@ docker-compose.override.yml
 # Node (frontend)
 node_modules/
 .next/
+.next-phowhisper/
 out/
 .nuxt/
+frontend/public/models/phowhisper-base/
+frontend/public/onnx/
 
 # Build
 *.pyc

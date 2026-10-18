@@ -299,12 +299,10 @@ async def test_start_interview_jd_only_without_cv(client, clock):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("key", "expected"), [("", False), ("  ", False), ("gsk_your_groq_api_key_here", False), ("gsk-test", True)]
-)
-async def test_session_reports_voice_input_from_groq_key(client, cv, clock, monkeypatch, key, expected):
-    """Frontend ẩn nút "Nói câu trả lời" khi server chưa có GROQ_API_KEY thật (Groq Whisper nhận diện giọng nói)."""
+@pytest.mark.parametrize("key", ["", "  ", "gsk_your_groq_api_key_here", "gsk-test"])
+async def test_session_supports_on_device_voice_without_groq_key(client, cv, clock, monkeypatch, key):
+    """PhoWhisper availability depends on the browser, not a server transcription key."""
     from src.config import get_settings
 
     monkeypatch.setattr(get_settings(), "groq_api_key", key)
-    assert (await start(client, cv)).json()["voice_input"] is expected
+    assert (await start(client, cv)).json()["voice_input"] is True

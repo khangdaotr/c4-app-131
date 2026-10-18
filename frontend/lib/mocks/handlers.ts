@@ -324,7 +324,7 @@ function interviewView(iv: MockInterview): InterviewSession {
     seconds_left: active ? Math.max(0, Math.round((iv.deadline - reference) / 1000)) : null,
     paused: iv.pausedAt !== null,
     pause_seconds_left: iv.pausedAt !== null ? Math.max(0, PAUSE_MAX_SECONDS - Math.round((now - iv.pausedAt) / 1000)) : null,
-    // Bản demo luôn có nút giọng nói (lib/use-groq-whisper.ts giả lập lời nói, không cần micro)
+    // Demo sessions also support on-device PhoWhisper; the client checks model/device readiness.
     voice_input: true,
   })
 }
@@ -1514,7 +1514,7 @@ export const mockApi = {
     return interviewView(iv)
   },
 
-  /** Chỉ để đủ API; ở chế độ mock, lib/use-groq-whisper.ts tự điền câu trả lời mẫu, không gửi ghi âm. */
+  /** Legacy server-transcription mock; the interview UI recognizes speech locally. */
   async transcribeAudio(): Promise<{ text: string }> {
     await delay(700)
     return { text: "Em có kinh nghiệm lập trình backend với Python và FastAPI." }
